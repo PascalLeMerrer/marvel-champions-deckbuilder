@@ -58,7 +58,8 @@ cardDecoder =
 
 cardListDecoder : Decoder (List Card)
 cardListDecoder =
-    Json.Decode.list cardDecoder
+    Json.Decode.field "data" <|
+        Json.Decode.list cardDecoder
 
 
 encodeCard : Card -> Encode.Value
@@ -78,10 +79,14 @@ encodeNewCard card =
     Encode.object <|
         [ ( "code", Encode.string card.code )
         , ( "kind", Encode.string card.kind )
-        , ( "imagesrc", Encode.string (
-                case card.imagesrc of
-                    Just url -> url
-                    Nothing -> ""
+        , ( "imagesrc"
+          , Encode.string
+                (case card.imagesrc of
+                    Just url ->
+                        url
+
+                    Nothing ->
+                        ""
                 )
           )
         , ( "name", Encode.string card.name )

@@ -1,19 +1,26 @@
-module Backend exposing (saveCardListCmd, savePackListCmd)
+module Backend exposing (getCardListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
 
 {- Exchanges with Kinto -}
 
-import Card exposing (Card, cardDecoder, encodeNewCard)
+import Card exposing (Card, cardDecoder, cardListDecoder, encodeNewCard)
 import Http
 import Json.Decode exposing (Decoder)
 import Json.Encode as Encode
 import List.Split exposing (chunksOfLeft)
-import Pack exposing (Pack, encodeNewPack, packDecoder)
+import Pack exposing (Pack, encodeNewPack, packDecoder, packListDecoder)
 
 
+baseUrl : String
 baseUrl =
-    "http://localhost:8888/v1/"
+    "http://localhost:8888/v1"
 
 
+collectionsUrl : String
+collectionsUrl =
+    baseUrl ++ "/buckets/deckbuilder/collections"
+
+
+authHeader : Http.Header
 authHeader =
     -- TODO encode auth token from plain text value
     Http.header "Authorization" "Basic YXBwOmF6eGQ0ZGUzZmZnNUdmZDY4alVVazkwbA=="
@@ -26,25 +33,32 @@ timeOutMiliseconds =
 
 
 -- PACKS --
---savePackCmd : Pack -> (Result Http.Error (List Pack) -> msg) -> Cmd msg
---savePackCmd pack msg =
---    Http.request
---        { method = "POST"
---        , headers = [ authHeader ]
---        , url = baseUrl ++ "buckets/deckbuilder/collections/packs/records"
---        , body = Http.jsonBody (encodePackCreationPayload pack)
---        , expect = Http.expectJson msg packListCreationDecoder
---        , timeout = timeOutMiliseconds
---        , tracker = Nothing
---        }
+
+
+getPackListCmd : (Result Http.Error (List Pack) -> msg) -> Cmd msg
+getPackListCmd msg =
+    Http.request
+        { method = "GET"
+        , headers = [ authHeader ]
+        , url = collectionsUrl ++ "/packs/records"
+        , body = Http.emptyBody
+        , expect = Http.expectJson msg packListDecoder
+        , timeout = timeOutMiliseconds
+        , tracker = Nothing
+        }
 
 
 savePackListCmd : List Pack -> (Result Http.Error (List Pack) -> msg) -> Cmd msg
 savePackListCmd packs msg =
-    packs
-        |> chunksOfLeft 25
-        |> List.map (savePackSubListCmd msg)
-        |> Cmd.batch
+    if List.isEmpty packs then
+        Cmd.none
+
+    else
+        packs
+            |> chunksOfLeft 25
+            |> List.take 1
+            |> List.map (savePackSubListCmd msg)
+            |> Cmd.batch
 
 
 savePackSubListCmd : (Result Http.Error (List Pack) -> msg) -> List Pack -> Cmd msg
@@ -52,7 +66,7 @@ savePackSubListCmd msg packs =
     Http.request
         { method = "POST"
         , headers = [ authHeader ]
-        , url = baseUrl ++ "batch"
+        , url = baseUrl ++ "/batch"
         , body = Http.jsonBody (encodePackListCreationPayload packs)
         , expect = Http.expectJson msg packListCreationDecoder
         , timeout = timeOutMiliseconds
@@ -103,12 +117,29 @@ encodePackCreationBody pack =
 -- CARDS --
 
 
+getCardListCmd : (Result Http.Error (List Card) -> msg) -> Cmd msg
+getCardListCmd msg =
+    Http.request
+        { method = "GET"
+        , headers = [ authHeader ]
+        , url = collectionsUrl ++ "/cards/records"
+        , body = Http.emptyBody
+        , expect = Http.expectJson msg cardListDecoder
+        , timeout = timeOutMiliseconds
+        , tracker = Nothing
+        }
+
+
 saveCardListCmd : List Card -> (Result Http.Error (List Card) -> msg) -> Cmd msg
 saveCardListCmd cards msg =
-    cards
-        |> chunksOfLeft 25
-        |> List.map (saveCardSubListCmd msg)
-        |> Cmd.batch
+    if List.isEmpty cards then
+        Cmd.none
+
+    else
+        cards
+            |> chunksOfLeft 25
+            |> List.map (saveCardSubListCmd msg)
+            |> Cmd.batch
 
 
 saveCardSubListCmd : (Result Http.Error (List Card) -> msg) -> List Card -> Cmd msg
@@ -116,7 +147,7 @@ saveCardSubListCmd msg cards =
     Http.request
         { method = "POST"
         , headers = [ authHeader ]
-        , url = baseUrl ++ "batch"
+        , url = baseUrl ++ "/batch"
         , body = Http.jsonBody (encodeCardListCreationPayload cards)
         , expect = Http.expectJson msg cardListCreationDecoder
         , timeout = timeOutMiliseconds

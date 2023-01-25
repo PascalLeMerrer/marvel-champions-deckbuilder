@@ -1,4 +1,4 @@
-module Pack exposing (Pack, PackStatus(..), encodeNewPack, newPackListDecoder, packDecoder)
+module Pack exposing (Pack, PackStatus(..), encodeNewPack, newPackListDecoder, packDecoder, packListDecoder)
 
 import Json.Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (hardcoded, required)
@@ -44,16 +44,22 @@ packDecoder : Decoder Pack
 packDecoder =
     Json.Decode.succeed Pack
         |> required "id" Json.Decode.string
-        |> required "marvel_dcb_id" Json.Decode.int
+        |> required "marvel_cdb_id" Json.Decode.int
         |> required "name" Json.Decode.string
         |> hardcoded Saved
+
+
+packListDecoder : Decoder (List Pack)
+packListDecoder =
+    Json.Decode.field "data" <|
+        Json.Decode.list packDecoder
 
 
 encodePack : Pack -> Encode.Value
 encodePack pack =
     Encode.object <|
         [ ( "id", Encode.string pack.id )
-        , ( "marvel_dcb_id", Encode.int pack.marvel_cdb_id )
+        , ( "marvel_cdb_id", Encode.int pack.marvel_cdb_id )
         , ( "name", Encode.string pack.name )
         ]
 
@@ -63,5 +69,5 @@ encodeNewPack pack =
     -- when creating a new pack, we cannot pass an ID; the backend will generate it
     Encode.object <|
         [ ( "name", Encode.string pack.name )
-        , ( "marvel_dcb_id", Encode.int pack.marvel_cdb_id )
+        , ( "marvel_cdb_id", Encode.int pack.marvel_cdb_id )
         ]
