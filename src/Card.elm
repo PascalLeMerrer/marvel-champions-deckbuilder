@@ -1,4 +1,4 @@
-module Card exposing (Card, cardDecoder, cardListDecoder, encodeCard, encodeNewCard, newCardListDecoder)
+module Card exposing (Card, cardDecoder, cardListDecoder, encodeCard, encodeNewCard)
 
 import Json.Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
@@ -15,28 +15,6 @@ type alias Card =
     , name : String
     , faction : String -- TODO A changer en enum
     }
-
-
-
-{- Decoders for interactions with MarvelCDB -}
-
-
-newCardListDecoder : Decoder (List Card)
-newCardListDecoder =
-    Json.Decode.list newCardDecoder
-
-
-newCardDecoder : Decoder Card
-newCardDecoder =
-    Json.Decode.succeed Card
-        |> hardcoded ""
-        |> required "code" Json.Decode.string
-        |> optional "imagesrc" (Json.Decode.map Just Json.Decode.string) (Just "no url")
-        |> hardcoded False
-        |> optional "duplicate_of_code" (Json.Decode.map Just Json.Decode.string) Nothing
-        |> required "type_code" Json.Decode.string
-        |> required "name" Json.Decode.string
-        |> required "faction_code" Json.Decode.string
 
 
 

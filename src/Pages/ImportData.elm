@@ -1,7 +1,8 @@
 module Pages.ImportData exposing (Model, Msg, page)
 
-import Backend exposing (getCardListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
-import Card exposing (Card, newCardListDecoder)
+import Backend exposing (backendName, errorToString, saveCardListCmd, savePackListCmd)
+import Card exposing (Card)
+import Effect exposing (Effect)
 import Element as E exposing (rgb255)
 import Element.Background as Background
 import Element.Border as Border
@@ -10,7 +11,8 @@ import Element.Font as Font
 import Gen.Params.ImportData exposing (Params)
 import Http
 import List.Extra exposing (updateIf)
-import Pack exposing (Pack, newPackListDecoder)
+import MarvelCdb exposing (loadAllCardsFromMarvelCdbCmd, loadAllPacksFromMarvelCdbCmd, marvelCDBName)
+import Pack exposing (Pack)
 import Page
 import Request
 import Shared
@@ -19,51 +21,11 @@ import View exposing (View)
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
-    Page.element
-        { init = init
+    Page.advanced
+        { init = init shared
         , update = update
         , view = view
         , subscriptions = subscriptions
-        }
-
-
-
--- Constants
-
-
-cardsUrl =
-    "https://fr.marvelcdb.com/api/public/cards/"
-
-
-packsUrl =
-    "https://fr.marvelcdb.com/api/public/packs/"
-
-
-backendName =
-    "The backend"
-
-
-marvelCDBName =
-    "The Marvel CDB server"
-
-
-
----
-
-
-packImportationCmd : Cmd Msg
-packImportationCmd =
-    Http.get
-        { url = packsUrl
-        , expect = Http.expectJson MarvelDcbReturnedPacks newPackListDecoder
-        }
-
-
-cardImportationCmd : Cmd Msg
-cardImportationCmd =
-    Http.get
-        { url = cardsUrl
-        , expect = Http.expectJson MarvelDcbReturnedCards newCardListDecoder
         }
 
 
@@ -74,42 +36,60 @@ cardImportationCmd =
 type alias Model =
     { cards : List Card
     , cardCodes : List String
-    , marvel_cdb_pack_ids : List Int
+    , marvelCdbPackIds : List Int
     , packs : List Pack
-    , status : List String
+    , logs : List String
     }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( { cards = []
-      , cardCodes = []
-      , marvel_cdb_pack_ids = []
-      , packs = []
-      , status = [ "Chargement de la liste des cartes" ]
-      }
-    , getPackListCmd BackendReturnedPackList
-    )
+init : Shared.Model -> ( Model, Effect Msg )
+init shared =
+    case shared.status of
+        Shared.Error ->
+            ( { cards = []
+              , cardCodes = []
+              , marvelCdbPackIds = []
+              , packs = []
+              , logs = shared.logs
+              }
+            , Effect.none
+            )
+
+        Shared.Loading ->
+            ( { cards = []
+              , cardCodes = []
+              , marvelCdbPackIds = []
+              , packs = []
+              , logs = "loading..." :: shared.logs
+              }
+            , Effect.none
+            )
+
+        Shared.Loaded ->
+            ( { cards = shared.cards
+              , cardCodes = List.map .code shared.cards
+              , marvelCdbPackIds = List.map .marvelCdbId shared.packs
+              , packs = shared.packs
+              , logs = "loaded" :: shared.logs
+              }
+            , Effect.batch
+                [ Effect.fromCmd <| loadAllPacksFromMarvelCdbCmd MarvelDcbReturnedPacks
+                , Effect.fromCmd <| loadAllCardsFromMarvelCdbCmd MarvelDcbReturnedCards
+                ]
+            )
+
+        Shared.Initialized ->
+            ( { cards = []
+              , cardCodes = []
+              , marvelCdbPackIds = []
+              , packs = []
+              , logs = "initialized" :: shared.logs
+              }
+            , Effect.fromShared Shared.PageReloaded
+            )
 
 
 
-{-
-   init
-       -> getPackListCmd
-       -> BackendReturnedPackList
-       -> packImportationCmd
-       -> MarvelDcbReturnedPacks
-       -> savePackListCmd
-       -> BackendReturnedImportedPackList
-       -> getCardListCmd
-       -> BackendReturnedCardList
-       -> cardImportationCmd
-       -> MarvelDcbReturnedCards
-       -> saveCardListCmd
-       -> BackendReturnedImportedCardList
-
-
--}
 -- UPDATE
 
 
@@ -117,83 +97,51 @@ type Msg
     = MarvelDcbReturnedPacks (Result Http.Error (List Pack))
     | MarvelDcbReturnedCards (Result Http.Error (List Card))
     | BackendReturnedImportedPackList (Result Http.Error (List Pack))
-    | BackendReturnedPackList (Result Http.Error (List Pack))
-    | BackendReturnedCardList (Result Http.Error (List Card))
     | BackendReturnedImportedCardList (Result Http.Error (List Card))
     | UserClickedUnselectedCard Card
     | UserClickedSelectedCard Card
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
         BackendReturnedImportedCardList (Err httpError) ->
             ( { model
-                | status = errorToString backendName httpError :: model.status
+                | logs = errorToString backendName httpError :: model.logs
               }
-            , Cmd.none
+            , Effect.none
             )
 
         BackendReturnedImportedCardList (Ok cards) ->
             ( { model
                 | cards = model.cards ++ cards
-                , status = ((List.length cards |> String.fromInt) ++ " cartes importées") :: model.status
+                , logs = ((List.length cards |> String.fromInt) ++ " cartes importées") :: model.logs
               }
-            , Cmd.none
-            )
-
-        BackendReturnedCardList (Ok cards) ->
-            ( { model
-                | cards = cards
-                , cardCodes = cards |> List.map .code
-                , status = ((List.length cards |> String.fromInt) ++ " cartes dans la base de données") :: model.status
-              }
-            , cardImportationCmd
-            )
-
-        BackendReturnedCardList (Err httpError) ->
-            ( { model
-                | status = errorToString backendName httpError :: model.status
-              }
-            , Cmd.none
+              -- TODO update shared model
+            , Effect.none
             )
 
         BackendReturnedImportedPackList (Err httpError) ->
             ( { model
-                | status = errorToString backendName httpError :: model.status
+                | logs = errorToString backendName httpError :: model.logs
               }
-            , Cmd.none
+            , Effect.none
             )
 
         BackendReturnedImportedPackList (Ok packs) ->
             ( { model
                 | packs = model.packs ++ packs
-                , status = ((List.length packs |> String.fromInt) ++ " packs importés") :: model.status
+                , logs = ((List.length packs |> String.fromInt) ++ " packs importés") :: model.logs
               }
-            , Cmd.none
-            )
-
-        BackendReturnedPackList (Err httpError) ->
-            ( { model
-                | status = errorToString backendName httpError :: model.status
-              }
-            , Cmd.none
-            )
-
-        BackendReturnedPackList (Ok packs) ->
-            ( { model
-                | packs = packs
-                , marvel_cdb_pack_ids = packs |> List.map .marvel_cdb_id
-                , status = ((List.length packs |> String.fromInt) ++ " packs dans la base de données") :: model.status
-              }
-            , packImportationCmd
+              -- TODO update shared model
+            , Effect.none
             )
 
         MarvelDcbReturnedCards (Err httpError) ->
             ( { model
-                | status = errorToString marvelCDBName httpError :: model.status
+                | logs = errorToString marvelCDBName httpError :: model.logs
               }
-            , Cmd.none
+            , Effect.none
             )
 
         MarvelDcbReturnedCards (Ok cards) ->
@@ -206,16 +154,16 @@ update msg model =
                         |> List.filter (\card -> not <| List.member card.code model.cardCodes)
             in
             ( { model
-                | status = ((List.length newCards |> String.fromInt) ++ " nouvelles cartes reçues") :: model.status
+                | logs = ((List.length newCards |> String.fromInt) ++ " nouvelles cartes reçues") :: model.logs
               }
-            , saveCardListCmd newCards BackendReturnedImportedCardList
+            , Effect.fromCmd <| saveCardListCmd newCards BackendReturnedImportedCardList
             )
 
         MarvelDcbReturnedPacks (Err httpError) ->
             ( { model
-                | status = errorToString marvelCDBName httpError :: model.status
+                | logs = errorToString marvelCDBName httpError :: model.logs
               }
-            , Cmd.none
+            , Effect.none
             )
 
         MarvelDcbReturnedPacks (Ok packs) ->
@@ -223,25 +171,22 @@ update msg model =
                 newPacks : List Pack
                 newPacks =
                     -- the packs added to marvel CDB since the last importation
-                    List.filter (\p -> not <| List.member p.marvel_cdb_id model.marvel_cdb_pack_ids) packs
+                    List.filter (\p -> not <| List.member p.marvelCdbId model.marvelCdbPackIds) packs
             in
             ( { model
-                | status = ((List.length newPacks |> String.fromInt) ++ " nouveaux packs reçus") :: model.status
+                | logs = ((List.length newPacks |> String.fromInt) ++ " nouveaux packs reçus") :: model.logs
               }
-            , Cmd.batch
-                [ savePackListCmd newPacks BackendReturnedImportedPackList
-                , getCardListCmd BackendReturnedCardList
-                ]
+            , Effect.fromCmd <| savePackListCmd newPacks BackendReturnedImportedPackList
             )
 
         UserClickedUnselectedCard card ->
             ( { model | cards = updateIf (\c -> c == card) (\_ -> { card | isSelected = True }) model.cards }
-            , Cmd.none
+            , Effect.none
             )
 
         UserClickedSelectedCard card ->
             ( { model | cards = updateIf (\c -> c == card) (\_ -> { card | isSelected = False }) model.cards }
-            , Cmd.none
+            , Effect.none
             )
 
 
@@ -249,25 +194,6 @@ unique : List Card -> List Card
 unique cards =
     -- eliminate duplicated cards
     List.filter (\c -> c.isDuplicateOf == Nothing) cards
-
-
-errorToString : String -> Http.Error -> String
-errorToString serverName error =
-    case error of
-        Http.BadUrl url ->
-            serverName ++ " server URL is incorrect: " ++ url
-
-        Http.Timeout ->
-            serverName ++ " server did not respond"
-
-        Http.NetworkError ->
-            "Please verify your internet connection."
-
-        Http.BadStatus code ->
-            serverName ++ " server returned an error " ++ String.fromInt code
-
-        Http.BadBody body ->
-            serverName ++ " server returned an unexpected content " ++ body
 
 
 
@@ -293,7 +219,7 @@ view model =
                 [ E.padding 20
                 , E.spacing 20
                 ]
-                [ viewStatus model.status
+                [ viewStatus model.logs
                 , E.text "Packs"
                 , viewPacks model.packs
                 , E.text "Cards"
@@ -430,12 +356,3 @@ viewCard index card =
             E.image
                 attributes
                 { src = "https://fr.marvelcdb.com" ++ path, description = card.name }
-
-
-removeLeadingQuote : String -> String
-removeLeadingQuote string =
-    if String.startsWith "\"" string then
-        String.dropLeft 1 string
-
-    else
-        string

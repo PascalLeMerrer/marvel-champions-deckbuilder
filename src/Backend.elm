@@ -1,4 +1,4 @@
-module Backend exposing (getCardListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
+module Backend exposing (backendName, errorToString, getCardListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
 
 {- Exchanges with Kinto -}
 
@@ -138,6 +138,7 @@ saveCardListCmd cards msg =
     else
         cards
             |> chunksOfLeft 25
+            |> List.take 2
             |> List.map (saveCardSubListCmd msg)
             |> Cmd.batch
 
@@ -192,3 +193,27 @@ encodeCardCreationBody card =
           , encodeCardCreationPayload card
           )
         ]
+
+
+backendName : String
+backendName =
+    "The backend"
+
+
+errorToString : String -> Http.Error -> String
+errorToString serverName error =
+    case error of
+        Http.BadUrl url ->
+            serverName ++ " server URL is incorrect: " ++ url
+
+        Http.Timeout ->
+            serverName ++ " server did not respond"
+
+        Http.NetworkError ->
+            "Please verify your internet connection."
+
+        Http.BadStatus code ->
+            serverName ++ " server returned an error " ++ String.fromInt code
+
+        Http.BadBody body ->
+            serverName ++ " server returned an unexpected content " ++ body
