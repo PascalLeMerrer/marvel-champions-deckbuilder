@@ -1,4 +1,4 @@
-module Faction exposing (Faction, aggression, allAffinities, basic, decoder, hero, justice, leadership, name, protection, toString)
+module Faction exposing (Faction, aggression, allAffinities, basic, decoder, hero, justice, leadership, protection, toString)
 
 import Json.Decode exposing (Decoder)
 
@@ -40,11 +40,6 @@ protection =
 allAffinities : List Faction
 allAffinities =
     [ aggression, leadership, justice, protection ]
-
-
-name : Faction -> String
-name (Faction faction) =
-    faction
 
 
 toString : Faction -> String

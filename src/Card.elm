@@ -9,6 +9,7 @@ import Faction exposing (Faction)
 import Json.Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
 import Json.Encode as Encode
+import Kind exposing (Kind)
 
 
 type alias Card =
@@ -17,7 +18,7 @@ type alias Card =
     , imagesrc : Maybe String
     , isSelected : Bool
     , isDuplicateOf : Maybe String
-    , kind : String -- TODO A changer en enum
+    , kind : Kind
     , name : String
     , faction : Faction
     }
@@ -35,7 +36,7 @@ cardDecoder =
         |> optional "imagesrc" (Json.Decode.map Just Json.Decode.string) Nothing
         |> hardcoded False
         |> optional "duplicate_of_code" (Json.Decode.map Just Json.Decode.string) Nothing
-        |> required "kind" (Json.Decode.map decodeKind Json.Decode.string)
+        |> required "kind" Kind.decoder
         |> required "name" Json.Decode.string
         |> required "faction" Faction.decoder
 
@@ -51,7 +52,7 @@ encodeCard card =
     Encode.object <|
         [ ( "id", Encode.string card.id )
         , ( "code", Encode.string card.code )
-        , ( "kind", Encode.string card.kind )
+        , ( "kind", Encode.string (Kind.toString card.kind) )
         , ( "name", Encode.string card.name )
         , ( "faction", Encode.string (Faction.toString card.faction) )
         ]
@@ -62,7 +63,7 @@ encodeNewCard card =
     -- when creating a new card, we cannot pass an ID; the backend will generate it
     Encode.object <|
         [ ( "code", Encode.string card.code )
-        , ( "kind", Encode.string card.kind )
+        , ( "kind", Kind.encode card.kind )
         , ( "imagesrc"
           , Encode.string
                 (case card.imagesrc of
@@ -143,7 +144,7 @@ viewCardsTable cards selectMsg unselectMsg =
                   , width = E.fill
                   , view =
                         \index card ->
-                            E.el (rowAttributes selectMsg unselectMsg index card) (E.text card.kind)
+                            E.el (rowAttributes selectMsg unselectMsg index card) (E.text <| Kind.toString card.kind)
                   }
                 ]
             }

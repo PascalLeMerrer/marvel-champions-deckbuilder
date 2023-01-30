@@ -5,6 +5,7 @@ import Faction
 import Http
 import Json.Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
+import Kind
 import Pack exposing (Pack, PackStatus(..))
 
 
@@ -64,6 +65,6 @@ newCardDecoder =
         |> optional "imagesrc" (Json.Decode.map Just Json.Decode.string) (Just "no url")
         |> hardcoded False
         |> optional "duplicate_of_code" (Json.Decode.map Just Json.Decode.string) Nothing
-        |> required "type_code" Json.Decode.string
+        |> required "type_code" Kind.decoder
         |> required "name" Json.Decode.string
         |> required "faction_code" Faction.decoder

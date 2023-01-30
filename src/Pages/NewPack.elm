@@ -9,6 +9,7 @@ import Element.Input as Input
 import Faction exposing (Faction, basic)
 import Gen.Params.NewPack exposing (Params)
 import Gen.Route as Route
+import Kind
 import List.Extra exposing (updateIf)
 import Page
 import Request
@@ -168,17 +169,12 @@ update msg model =
 
         UserChangedHeroSearchText searchText ->
             let
-                heroic : String
-                heroic =
-                    -- Problably wrong - using an enum for kind should confirm it
-                    Faction.hero |> Faction.toString
-
                 searchResult : List Card
                 searchResult =
                     if not (String.isEmpty searchText) then
                         List.filter
                             (\card ->
-                                (card.kind == heroic)
+                                (card.kind == Kind.hero)
                                     && String.startsWith (String.toLower searchText) (String.toLower card.name)
                             )
                             model.allCards
