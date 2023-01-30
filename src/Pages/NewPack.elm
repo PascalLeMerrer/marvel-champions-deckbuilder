@@ -1,12 +1,12 @@
 module Pages.NewPack exposing (Model, Msg, page)
 
-import Affinity exposing (Affinity)
 import Card exposing (Card, viewCardsTable)
 import Element as E exposing (rgb)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Faction exposing (Faction, basic)
 import Gen.Params.NewPack exposing (Params)
 import Gen.Route as Route
 import List.Extra exposing (updateIf)
@@ -32,7 +32,7 @@ page shared req =
 
 
 type alias Model =
-    { affinities : List Affinity
+    { affinities : List Faction
     , title : String
     , allCards : List Card
     , availableCards : List Card
@@ -67,13 +67,12 @@ init shared req =
     )
 
 
-filter : List Affinity -> List Card -> List Card
+filter : List Faction -> List Card -> List Card
 filter affinities cards =
     let
-        selected_factions : List String
+        selected_factions : List Faction
         selected_factions =
-            [ "basic" ]
-                ++ List.map Affinity.name affinities
+            basic :: affinities
     in
     cards |> List.filter (\card -> List.member card.faction selected_factions)
 
@@ -84,7 +83,7 @@ filter affinities cards =
 
 type Msg
     = UserChangedPackTitle String
-    | UserToggledAffinity Affinity Bool
+    | UserToggledAffinity Faction Bool
     | UserChangedHeroSearchText String
     | UserChangedCardSearchText String
     | UserClickedUnselectedCard Card
@@ -111,7 +110,7 @@ update msg model =
                 isSelected =
                     List.member affinity model.affinities
 
-                affinities : List Affinity
+                affinities : List Faction
                 affinities =
                     if not checked && isSelected then
                         List.Extra.remove affinity model.affinities
@@ -169,12 +168,17 @@ update msg model =
 
         UserChangedHeroSearchText searchText ->
             let
+                heroic : String
+                heroic =
+                    -- Problably wrong - using an enum for kind should confirm it
+                    Faction.hero |> Faction.toString
+
                 searchResult : List Card
                 searchResult =
                     if not (String.isEmpty searchText) then
                         List.filter
                             (\card ->
-                                (card.kind == "Héros")
+                                (card.kind == heroic)
                                     && String.startsWith (String.toLower searchText) (String.toLower card.name)
                             )
                             model.allCards
@@ -234,9 +238,8 @@ view model =
           <|
             E.el
                 [ E.centerX
-                , E.centerY
                 , E.width E.fill
-                , E.padding 10
+                , E.padding 20
                 ]
                 (E.column
                     [ Font.size 11
@@ -276,10 +279,10 @@ viewAffinities model =
         ]
     <|
         E.text "Affinités"
-            :: List.map (viewAffinity model) Affinity.all
+            :: List.map (viewAffinity model) Faction.allAffinities
 
 
-viewAffinity : Model -> Affinity -> E.Element Msg
+viewAffinity : Model -> Faction -> E.Element Msg
 viewAffinity model affinity =
     Input.checkbox [ Font.size 20 ]
         { onChange = UserToggledAffinity affinity
@@ -291,7 +294,7 @@ viewAffinity model affinity =
                 ]
             <|
                 E.text <|
-                    Affinity.toString affinity
+                    Faction.toString affinity
         }
 
 

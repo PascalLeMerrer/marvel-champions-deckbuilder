@@ -5,6 +5,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
+import Faction exposing (Faction)
 import Json.Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
 import Json.Encode as Encode
@@ -18,7 +19,7 @@ type alias Card =
     , isDuplicateOf : Maybe String
     , kind : String -- TODO A changer en enum
     , name : String
-    , faction : String -- TODO A changer en enum
+    , faction : Faction
     }
 
 
@@ -36,7 +37,7 @@ cardDecoder =
         |> optional "duplicate_of_code" (Json.Decode.map Just Json.Decode.string) Nothing
         |> required "kind" (Json.Decode.map decodeKind Json.Decode.string)
         |> required "name" Json.Decode.string
-        |> required "faction" Json.Decode.string
+        |> required "faction" Faction.decoder
 
 
 cardListDecoder : Decoder (List Card)
@@ -52,7 +53,7 @@ encodeCard card =
         , ( "code", Encode.string card.code )
         , ( "kind", Encode.string card.kind )
         , ( "name", Encode.string card.name )
-        , ( "faction", Encode.string card.faction )
+        , ( "faction", Encode.string (Faction.toString card.faction) )
         ]
 
 
@@ -73,7 +74,7 @@ encodeNewCard card =
                 )
           )
         , ( "name", Encode.string card.name )
-        , ( "faction", Encode.string card.faction )
+        , ( "faction", card.faction |> Faction.toString |> Encode.string )
         ]
 
 

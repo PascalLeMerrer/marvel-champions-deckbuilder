@@ -1,6 +1,7 @@
 module MarvelCdb exposing (loadAllCardsFromMarvelCdbCmd, loadAllPacksFromMarvelCdbCmd, marvelCDBName)
 
 import Card exposing (Card)
+import Faction
 import Http
 import Json.Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
@@ -65,4 +66,4 @@ newCardDecoder =
         |> optional "duplicate_of_code" (Json.Decode.map Just Json.Decode.string) Nothing
         |> required "type_code" Json.Decode.string
         |> required "name" Json.Decode.string
-        |> required "faction_code" Json.Decode.string
+        |> required "faction_code" Faction.decoder
