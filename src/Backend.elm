@@ -56,7 +56,6 @@ savePackListCmd packs msg =
     else
         packs
             |> chunksOfLeft 25
-            |> List.take 1
             |> List.map (savePackSubListCmd msg)
             |> Cmd.batch
 
@@ -138,7 +137,6 @@ saveCardListCmd cards msg =
     else
         cards
             |> chunksOfLeft 25
-            |> List.take 2
             |> List.map (saveCardSubListCmd msg)
             |> Cmd.batch
 

@@ -1,7 +1,7 @@
 module Pages.ImportData exposing (Model, Msg, page)
 
 import Backend exposing (backendName, errorToString, saveCardListCmd, savePackListCmd)
-import Card exposing (Card)
+import Card exposing (Card, viewCardsTable)
 import Effect exposing (Effect)
 import Element as E exposing (rgb255)
 import Element.Background as Background
@@ -9,6 +9,7 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Gen.Params.ImportData exposing (Params)
+import Gen.Route as Route
 import Http
 import List.Extra exposing (updateIf)
 import MarvelCdb exposing (loadAllCardsFromMarvelCdbCmd, loadAllPacksFromMarvelCdbCmd, marvelCDBName)
@@ -16,13 +17,14 @@ import Pack exposing (Pack)
 import Page
 import Request
 import Shared
+import Utils.Route
 import View exposing (View)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
     Page.advanced
-        { init = init shared
+        { init = init shared req
         , update = update
         , view = view
         , subscriptions = subscriptions
@@ -42,8 +44,8 @@ type alias Model =
     }
 
 
-init : Shared.Model -> ( Model, Effect Msg )
-init shared =
+init : Shared.Model -> Request.With Params -> ( Model, Effect Msg )
+init shared req =
     case shared.status of
         Shared.Error ->
             ( { cards = []
@@ -55,6 +57,16 @@ init shared =
             , Effect.none
             )
 
+        Shared.Initialized ->
+            ( { cards = []
+              , cardCodes = []
+              , marvelCdbPackIds = []
+              , packs = []
+              , logs = "initialized" :: shared.logs
+              }
+            , Effect.fromCmd (Utils.Route.navigate req.key Route.Home_)
+            )
+
         Shared.Loading ->
             ( { cards = []
               , cardCodes = []
@@ -62,7 +74,7 @@ init shared =
               , packs = []
               , logs = "loading..." :: shared.logs
               }
-            , Effect.none
+            , Effect.fromCmd (Utils.Route.navigate req.key Route.Home_)
             )
 
         Shared.Loaded ->
@@ -76,16 +88,6 @@ init shared =
                 [ Effect.fromCmd <| loadAllPacksFromMarvelCdbCmd MarvelDcbReturnedPacks
                 , Effect.fromCmd <| loadAllCardsFromMarvelCdbCmd MarvelDcbReturnedCards
                 ]
-            )
-
-        Shared.Initialized ->
-            ( { cards = []
-              , cardCodes = []
-              , marvelCdbPackIds = []
-              , packs = []
-              , logs = "initialized" :: shared.logs
-              }
-            , Effect.fromShared Shared.PageReloaded
             )
 
 
@@ -113,12 +115,15 @@ update msg model =
             )
 
         BackendReturnedImportedCardList (Ok cards) ->
+            let
+                allCards =
+                    model.cards ++ cards
+            in
             ( { model
-                | cards = model.cards ++ cards
+                | cards = allCards
                 , logs = ((List.length cards |> String.fromInt) ++ " cartes importées") :: model.logs
               }
-              -- TODO update shared model
-            , Effect.none
+            , Effect.fromShared <| Shared.CardListUpdated allCards
             )
 
         BackendReturnedImportedPackList (Err httpError) ->
@@ -129,12 +134,15 @@ update msg model =
             )
 
         BackendReturnedImportedPackList (Ok packs) ->
+            let
+                allPacks =
+                    model.packs ++ packs
+            in
             ( { model
-                | packs = model.packs ++ packs
+                | packs = allPacks
                 , logs = ((List.length packs |> String.fromInt) ++ " packs importés") :: model.logs
               }
-              -- TODO update shared model
-            , Effect.none
+            , Effect.fromShared <| Shared.PackListUpdated allPacks
             )
 
         MarvelDcbReturnedCards (Err httpError) ->
@@ -218,12 +226,13 @@ view model =
             (E.column
                 [ E.padding 20
                 , E.spacing 20
+                , E.width E.fill
                 ]
                 [ viewStatus model.logs
                 , E.text "Packs"
                 , viewPacks model.packs
                 , E.text "Cards"
-                , viewCardsTable model.cards
+                , viewCardsTable model.cards UserClickedUnselectedCard UserClickedSelectedCard
                 ]
             )
         ]
@@ -259,100 +268,3 @@ viewPack pack =
             Pack.Saved ->
                 E.text " ✓"
         ]
-
-
-viewCardsTable : List Card -> E.Element Msg
-viewCardsTable cards =
-    let
-        sortedCards : List Card
-        sortedCards =
-            --List.sortWith (compareOn (.name >> removeLeadingQuote)) cards
-            List.sortBy .code cards
-    in
-    E.indexedTable
-        [ Border.color (rgb255 3 95 22)
-        , Border.solid
-        , Border.width 1
-        , Font.size 11
-        ]
-        { data = sortedCards
-        , columns =
-            [ { header = E.el headerAttributes (E.text "Carte")
-              , width = E.fill
-              , view = viewCard
-              }
-            , { header = E.el headerAttributes (E.text "Code")
-              , width = E.fill
-              , view =
-                    \index card ->
-                        E.el (rowAttributes index card) (E.text card.code)
-              }
-            , { header = E.el headerAttributes (E.text "Name")
-              , width = E.fill
-              , view =
-                    \index card ->
-                        E.el (rowAttributes index card) (E.text card.name)
-              }
-            , { header = E.el headerAttributes (E.text "Kind")
-              , width = E.fill
-              , view =
-                    \index card ->
-                        E.el (rowAttributes index card) (E.text card.kind)
-              }
-            ]
-        }
-
-
-rowAttributes : Int -> Card -> List (E.Attribute Msg)
-rowAttributes index card =
-    [ Background.color <|
-        if modBy 2 index == 0 then
-            rgb255 205 203 203
-
-        else
-            rgb255 246 244 244
-    , if card.isSelected then
-        onClick (UserClickedSelectedCard card)
-
-      else
-        onClick (UserClickedUnselectedCard card)
-    , E.alignTop
-    , E.padding 5
-    , E.pointer
-    ]
-
-
-headerAttributes : List (E.Attribute Msg)
-headerAttributes =
-    [ Background.color <|
-        rgb255 42 245 240
-    , E.alignTop
-    , Font.bold
-    , E.padding 5
-    , Border.widthEach
-        { bottom = 1
-        , left = 0
-        , right = 0
-        , top = 0
-        }
-    , Border.color <| rgb255 62 62 62
-    ]
-
-
-viewCard : Int -> Card -> E.Element Msg
-viewCard index card =
-    let
-        attributes =
-            rowAttributes index card
-    in
-    case ( card.imagesrc, card.isSelected ) of
-        ( _, False ) ->
-            E.el (Font.italic :: attributes) <| E.text "Cliquer pour afficher l'image"
-
-        ( Nothing, True ) ->
-            E.el (Font.italic :: attributes) <| E.text "Cliquer pour afficher l'image"
-
-        ( Just path, True ) ->
-            E.image
-                attributes
-                { src = "https://fr.marvelcdb.com" ++ path, description = card.name }

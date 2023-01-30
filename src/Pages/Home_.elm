@@ -1,6 +1,6 @@
 module Pages.Home_ exposing (page)
 
-import Element as E exposing (rgb)
+import Element as E exposing (rgb, rgb255)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -25,18 +25,29 @@ view req =
             E.column
                 [ E.centerX
                 , E.centerY
+                , E.spacing 10
                 ]
                 [ E.link
-                    [ Background.color (rgb (31 / 255) (199 / 255) (170 / 255))
-                    , Border.color (rgb 0 0.7 0)
-                    , Border.rounded 7
-                    , E.padding 10
-                    , Font.size 14
-                    , Font.color (rgb 1 1 1)
-                    ]
+                    linkAttributes
+                    { url = "/new-pack"
+                    , label = E.text "Créer un pack"
+                    }
+                , E.link
+                    linkAttributes
                     { url = "/import-data"
                     , label = E.text "Importer"
                     }
                 ]
         ]
     }
+
+
+linkAttributes : List (E.Attr () msg)
+linkAttributes =
+    [ Background.color (rgb255 31 199 170)
+    , Border.color (rgb 0 0.7 0)
+    , Border.rounded 7
+    , E.padding 10
+    , Font.size 14
+    , Font.color (rgb 1 1 1)
+    ]

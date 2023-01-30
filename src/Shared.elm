@@ -33,7 +33,8 @@ type alias Model =
 type Msg
     = BackendReturnedPackList (Result Http.Error (List Pack))
     | BackendReturnedCardList (Result Http.Error (List Card))
-    | PageReloaded
+    | CardListUpdated (List Card)
+    | PackListUpdated (List Pack)
 
 
 type Status
@@ -50,9 +51,12 @@ init _ _ =
       , packs = []
       , packsLoaded = False
       , logs = []
-      , status = Initialized
+      , status = Loading
       }
-    , Cmd.none
+    , Cmd.batch
+        [ getPackListCmd BackendReturnedPackList
+        , getCardListCmd BackendReturnedCardList
+        ]
     )
 
 
@@ -105,13 +109,11 @@ update _ msg model =
             , Cmd.none
             )
 
-        PageReloaded ->
-            ( { model | status = Loading }
-            , Cmd.batch
-                [ getPackListCmd BackendReturnedPackList
-                , getCardListCmd BackendReturnedCardList
-                ]
-            )
+        CardListUpdated cards ->
+            ( { model | cards = cards }, Cmd.none )
+
+        PackListUpdated packs ->
+            ( { model | packs = packs }, Cmd.none )
 
 
 subscriptions : Request -> Model -> Sub Msg
