@@ -151,7 +151,12 @@ view model =
                     , E.width E.fill
                     ]
                     [ viewCardSearch model
-                    , viewCardsTable model.cardSearchResult UserClickedUnselectedCard UserClickedSelectedCard
+                    , viewCardsTable model.cardSearchResult
+                        UserClickedUnselectedCard
+                        UserClickedSelectedCard
+                        { showCount = True
+                        , action = Nothing
+                        }
                     ]
                 )
         ]

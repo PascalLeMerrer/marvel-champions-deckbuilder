@@ -113,12 +113,30 @@ encodeNewCard card =
 -- View --
 
 
-viewCardsTable : List Card -> (Card -> msg) -> (Card -> msg) -> E.Element msg
-viewCardsTable cards selectMsg unselectMsg =
+type alias Options msg =
+    { showCount : Bool
+    , action : Maybe (E.Element msg)
+    }
+
+
+viewCardsTable : List Card -> (Card -> msg) -> (Card -> msg) -> Options msg -> E.Element msg
+viewCardsTable cards selectMsg unselectMsg options =
     let
         sortedCards : List Card
         sortedCards =
             List.sortBy .code cards
+
+        countColumn : List (E.IndexedColumn Card msg)
+        countColumn =
+            if options.showCount then
+                [ { header = E.el headerAttributes (E.text "Quantité")
+                  , width = E.fill
+                  , view = \index card -> E.el (rowAttributes selectMsg unselectMsg index card) (E.text <| String.fromInt card.quantity)
+                  }
+                ]
+
+            else
+                []
     in
     if List.length sortedCards > 0 then
         E.indexedTable
@@ -152,6 +170,7 @@ viewCardsTable cards selectMsg unselectMsg =
                             E.el (rowAttributes selectMsg unselectMsg index card) (E.text <| Kind.toString card.kind)
                   }
                 ]
+                    ++ countColumn
             }
 
     else

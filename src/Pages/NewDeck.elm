@@ -250,7 +250,12 @@ view model =
                     ]
                     [ viewTitleInput model
                     , viewHeroSearch model
-                    , viewCardsTable model.heroSearchResult UserClickedUnselectedHero UserClickedSelectedHero
+                    , viewCardsTable model.heroSearchResult
+                        UserClickedUnselectedHero
+                        UserClickedSelectedHero
+                        { showCount = True
+                        , action = Nothing
+                        }
                     , viewAffinities model
                     , viewCreateButton
                     ]

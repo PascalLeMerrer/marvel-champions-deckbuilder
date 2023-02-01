@@ -230,7 +230,12 @@ view model =
                 , E.text "Packs"
                 , viewPacks model.packs
                 , E.text "Cards"
-                , viewCardsTable model.cards UserClickedUnselectedCard UserClickedSelectedCard
+                , viewCardsTable model.cards
+                    UserClickedUnselectedCard
+                    UserClickedSelectedCard
+                    { showCount = True
+                    , action = Nothing
+                    }
                 ]
             )
         ]
