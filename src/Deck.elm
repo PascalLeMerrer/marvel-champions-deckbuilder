@@ -28,7 +28,7 @@ decoder =
         |> required "id" Json.Decode.string
         |> required "affinities" (Json.Decode.list Faction.decoder)
         |> required "cards" Card.cardListDecoder
-        |> required "hero" Card.cardDecoder
+        |> required "hero" Card.decoder
         |> required "heroCards" Card.cardListDecoder
         |> required "title" Json.Decode.string
 
@@ -48,13 +48,9 @@ encode deck =
 encodeDeckCreationPayload : Deck -> Json.Encode.Value
 encodeDeckCreationPayload deck =
     Json.Encode.object <|
-        [ ( "data"
-          , Json.Encode.object <|
-                [ ( "affinities", Json.Encode.list Faction.encode deck.affinities )
-                , ( "cards", Json.Encode.list Card.encodeCard deck.cards )
-                , ( "hero", Card.encodeCard deck.hero )
-                , ( "heroCards", Json.Encode.list Card.encodeCard deck.heroCards )
-                , ( "title", Json.Encode.string deck.title )
-                ]
-          )
+        [ ( "affinities", Json.Encode.list Faction.encode deck.affinities )
+        , ( "cards", Json.Encode.list Card.encodeCard deck.cards )
+        , ( "hero", Card.encodeCard deck.hero )
+        , ( "heroCards", Json.Encode.list Card.encodeCard deck.heroCards )
+        , ( "title", Json.Encode.string deck.title )
         ]

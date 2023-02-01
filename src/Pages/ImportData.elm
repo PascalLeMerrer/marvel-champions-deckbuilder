@@ -14,7 +14,6 @@ import Pack exposing (Pack)
 import Page
 import Request
 import Shared
-import Utils.Route
 import View exposing (View)
 
 
@@ -61,7 +60,8 @@ init shared req =
               , packs = []
               , logs = "initialized" :: shared.logs
               }
-            , Effect.fromCmd (Utils.Route.navigate req.key Route.Home_)
+            , Effect.fromCmd <|
+                Request.replaceRoute Route.Home_ req
             )
 
         Shared.Loading ->
@@ -71,7 +71,8 @@ init shared req =
               , packs = []
               , logs = "loading..." :: shared.logs
               }
-            , Effect.fromCmd (Utils.Route.navigate req.key Route.Home_)
+            , Effect.fromCmd <|
+                Request.replaceRoute Route.Home_ req
             )
 
         Shared.Loaded ->

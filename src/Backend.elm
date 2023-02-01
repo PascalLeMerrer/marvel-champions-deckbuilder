@@ -1,14 +1,26 @@
-module Backend exposing (backendName, createDeckCmd, errorToString, getCardListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
+module Backend exposing (backendName, createDeckCmd, createPack, errorToString, getCardListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
 
 {- Exchanges with Kinto -}
 
-import Card exposing (Card, cardDecoder, cardListDecoder, encodeNewCard)
-import Deck exposing (Deck, encodeDeckCreationPayload)
+import Card exposing (Card, cardListDecoder, decoder, encodeNewCard)
+import Deck exposing (Deck)
 import Http
 import Json.Decode exposing (Decoder)
 import Json.Encode as Encode
+import Kinto
 import List.Split exposing (chunksOfLeft)
 import Pack exposing (Pack, encodeNewPack, packDecoder, packListDecoder)
+
+
+client : Kinto.Client
+client =
+    Kinto.client
+        "http://localhost:8888/v1/"
+        (Kinto.Basic "app" "azxd4de3ffg5Gfd68jUUk90l")
+
+
+bucketName =
+    "deckbuilder"
 
 
 baseUrl : String
@@ -34,6 +46,30 @@ timeOutMiliseconds =
 
 
 -- PACKS --
+
+
+packCollection =
+    "packs"
+
+
+recordPack : Kinto.Resource Pack
+recordPack =
+    Kinto.recordResource bucketName packCollection Pack.packDecoder
+
+
+
+-- TODO use
+
+
+createPack : Pack -> (Result Kinto.Error Pack -> msg) -> Cmd msg
+createPack pack msg =
+    let
+        data =
+            Pack.encodeNewPack pack
+    in
+    client
+        |> Kinto.create recordPack data msg
+        |> Kinto.send
 
 
 getPackListCmd : (Result Http.Error (List Pack) -> msg) -> Cmd msg
@@ -117,17 +153,22 @@ encodePackCreationBody pack =
 -- CARDS --
 
 
-getCardListCmd : (Result Http.Error (List Card) -> msg) -> Cmd msg
+cardCollectionName : String
+cardCollectionName =
+    "cards"
+
+
+cardRecord : Kinto.Resource Card
+cardRecord =
+    Kinto.recordResource bucketName cardCollectionName Card.decoder
+
+
+getCardListCmd : (Result Kinto.Error (Kinto.Pager Card) -> msg) -> Cmd msg
 getCardListCmd msg =
-    Http.request
-        { method = "GET"
-        , headers = [ authHeader ]
-        , url = collectionsUrl ++ "/cards/records"
-        , body = Http.emptyBody
-        , expect = Http.expectJson msg cardListDecoder
-        , timeout = timeOutMiliseconds
-        , tracker = Nothing
-        }
+    client
+        |> Kinto.getList cardRecord msg
+        |> Kinto.sort [ "title", "description" ]
+        |> Kinto.send
 
 
 saveCardListCmd : List Card -> (Result Http.Error (List Card) -> msg) -> Cmd msg
@@ -160,7 +201,7 @@ cardListCreationDecoder =
     Json.Decode.field "responses" <|
         Json.Decode.list <|
             Json.Decode.field "body" <|
-                Json.Decode.field "data" cardDecoder
+                Json.Decode.field "data" decoder
 
 
 encodeCardCreationPayload : Card -> Encode.Value
@@ -222,14 +263,26 @@ errorToString serverName error =
 -- DECKS --
 
 
-createDeckCmd : (Result Http.Error Deck -> msg) -> Deck -> Cmd msg
-createDeckCmd msg cards =
-    Http.request
-        { method = "POST"
-        , headers = [ authHeader ]
-        , url = baseUrl ++ "/buckets/deckbuilder/collections/decks/records"
-        , body = Http.jsonBody (encodeDeckCreationPayload cards)
-        , expect = Http.expectJson msg Deck.decoder
-        , timeout = timeOutMiliseconds
-        , tracker = Nothing
-        }
+deckCollectionName : String
+deckCollectionName =
+    "decks"
+
+
+deckRecord : Kinto.Resource Deck
+deckRecord =
+    Kinto.recordResource bucketName deckCollectionName Deck.decoder
+
+
+
+-- TODO use
+
+
+createDeckCmd : Deck -> (Result Kinto.Error Deck -> msg) -> Cmd msg
+createDeckCmd deck msg =
+    let
+        data =
+            Deck.encodeDeckCreationPayload deck
+    in
+    client
+        |> Kinto.create deckRecord data msg
+        |> Kinto.send

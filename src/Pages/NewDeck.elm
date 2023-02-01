@@ -11,13 +11,12 @@ import Element.Input as Input
 import Faction exposing (Faction, basic)
 import Gen.Params.NewPack exposing (Params)
 import Gen.Route as Route
-import Http
 import Kind
+import Kinto
 import List.Extra exposing (updateIf)
 import Page
 import Request
 import Shared
-import Utils.Route
 import View exposing (View)
 
 
@@ -37,37 +36,33 @@ page shared req =
 
 type alias Model =
     { affinities : List Faction
-    , title : String
     , allCards : List Card
-    , availableCards : List Card
+    , error : Maybe String
     , hero : Maybe Card
-    , heroSearchText : String
     , heroSearchResult : List Card
-    , cardSearchResult : List Card
-    , cardSearchText : String
-    , selectedCards : List Card
+    , heroSearchText : String
+    , request : Request.With Params
+    , title : String
     }
 
 
 init : Shared.Model -> Request.With Params -> ( Model, Cmd Msg )
 init shared req =
-    ( { title = ""
-      , affinities = []
+    ( { affinities = []
       , allCards = shared.cards
-      , availableCards = filter [] shared.cards
+      , error = Nothing
       , hero = Nothing
-      , heroSearchText = ""
       , heroSearchResult = []
-      , cardSearchResult = []
-      , cardSearchText = ""
-      , selectedCards = []
+      , heroSearchText = ""
+      , request = req
+      , title = ""
       }
     , case shared.status of
         Shared.Loaded ->
             Cmd.none
 
         _ ->
-            Utils.Route.navigate req.key Route.Home_
+            Request.replaceRoute Route.Home_ req
     )
 
 
@@ -90,13 +85,10 @@ filter affinities cards =
 
 
 type Msg
-    = BackendReturnedDeck (Result Http.Error Deck)
+    = BackendReturnedDeck (Result Kinto.Error Deck)
     | UserChangedPackTitle String
     | UserToggledAffinity Faction Bool
     | UserChangedHeroSearchText String
-    | UserChangedCardSearchText String
-    | UserClickedUnselectedCard Card
-    | UserClickedSelectedCard Card
     | UserClickedUnselectedHero Card
     | UserClickedSelectedHero Card
     | UserClickedCreate
@@ -130,29 +122,6 @@ update msg model =
             in
             ( { model
                 | affinities = affinities
-                , availableCards = filter affinities model.allCards
-              }
-                |> searchCard model.cardSearchText
-            , Cmd.none
-            )
-
-        UserChangedCardSearchText searchText ->
-            ( model |> searchCard searchText
-            , Cmd.none
-            )
-
-        UserClickedUnselectedCard card ->
-            ( { model
-                | cardSearchResult =
-                    List.map (\c -> { c | isSelected = c == card }) model.cardSearchResult
-              }
-            , Cmd.none
-            )
-
-        UserClickedSelectedCard card ->
-            ( { model
-                | cardSearchResult =
-                    updateIf (\c -> c == card) (\_ -> { card | isSelected = False }) model.cardSearchResult
               }
             , Cmd.none
             )
@@ -207,16 +176,25 @@ update msg model =
                         deck =
                             deckBaseForHero model heroCard
                     in
-                    ( model, createDeckCmd BackendReturnedDeck deck )
+                    ( model, createDeckCmd deck BackendReturnedDeck )
 
                 _ ->
                     ( model, Cmd.none )
 
         BackendReturnedDeck (Ok deck) ->
-            Debug.todo "redirect to deck edition page"
+            let
+                _ =
+                    Debug.log "deck created, redirection in progress" deck
+            in
+            ( model
+            , Request.replaceRoute (Route.Deck__Id_ { id = deck.id }) model.request
+            )
 
-        BackendReturnedDeck (Err httpError) ->
-            Debug.todo "display error"
+        BackendReturnedDeck (Err kintoError) ->
+            -- TODO display error
+            ( { model | error = Just ("Deck creation failed: " ++ Kinto.errorToString kintoError) }
+            , Cmd.none
+            )
 
 
 deckBaseForHero : Model -> Card -> Deck
@@ -237,28 +215,6 @@ deckBaseForHero model heroCard =
     , hero = heroCard
     , heroCards = heroCards
     , title = model.title
-    }
-
-
-searchCard : String -> Model -> Model
-searchCard searchText model =
-    let
-        lowercaseSearchText =
-            String.toLower searchText
-
-        filterCards card =
-            String.startsWith lowercaseSearchText (String.toLower card.name)
-
-        searchResult =
-            if not (String.isEmpty searchText) then
-                List.filter filterCards model.availableCards
-
-            else
-                []
-    in
-    { model
-        | cardSearchText = searchText
-        , cardSearchResult = searchResult
     }
 
 
@@ -296,8 +252,6 @@ view model =
                     , viewHeroSearch model
                     , viewCardsTable model.heroSearchResult UserClickedUnselectedHero UserClickedSelectedHero
                     , viewAffinities model
-                    , viewCardSearch model
-                    , viewCardsTable model.cardSearchResult UserClickedUnselectedCard UserClickedSelectedCard
                     , viewCreateButton
                     ]
                 )
@@ -359,19 +313,6 @@ viewCreateButton =
         ]
         { onPress = Just UserClickedCreate
         , label = E.text "Créer"
-        }
-
-
-viewCardSearch : Model -> E.Element Msg
-viewCardSearch model =
-    Input.search
-        [ E.padding 6
-        , E.width (E.px 200)
-        ]
-        { onChange = UserChangedCardSearchText
-        , text = model.cardSearchText
-        , placeholder = Just <| Input.placeholder [] (E.text "Nom de la carte")
-        , label = Input.labelAbove [] (E.text "Carte")
         }
 
 

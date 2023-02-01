@@ -12,6 +12,7 @@ import Backend exposing (backendName, errorToString, getCardListCmd, getPackList
 import Card exposing (Card)
 import Http
 import Json.Decode as Json
+import Kinto
 import Pack exposing (Pack)
 import Request exposing (Request)
 
@@ -32,7 +33,7 @@ type alias Model =
 
 type Msg
     = BackendReturnedPackList (Result Http.Error (List Pack))
-    | BackendReturnedCardList (Result Http.Error (List Card))
+    | BackendReturnedCardList (Result Kinto.Error (Kinto.Pager Card))
     | CardListUpdated (List Card)
     | PackListUpdated (List Pack)
 
@@ -63,19 +64,19 @@ init _ _ =
 update : Request -> Msg -> Model -> ( Model, Cmd Msg )
 update _ msg model =
     case msg of
-        BackendReturnedCardList (Err httpError) ->
+        BackendReturnedCardList (Err kintoError) ->
             ( { model
-                | logs = errorToString backendName httpError :: model.logs
+                | logs = Kinto.errorToString kintoError :: model.logs
                 , status = Error
               }
             , Cmd.none
             )
 
-        BackendReturnedCardList (Ok cards) ->
+        BackendReturnedCardList (Ok pager) ->
             ( { model
-                | cards = cards
+                | cards = pager.objects
                 , cardsLoaded = True
-                , logs = ((List.length cards |> String.fromInt) ++ " cartes dans la base de données") :: model.logs
+                , logs = ((List.length pager.objects |> String.fromInt) ++ " cartes dans la base de données") :: model.logs
                 , status =
                     if model.packsLoaded then
                         Loaded

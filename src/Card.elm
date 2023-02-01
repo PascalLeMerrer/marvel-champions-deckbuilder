@@ -1,4 +1,4 @@
-module Card exposing (Card, cardDecoder, cardListDecoder, encodeCard, encodeNewCard, viewCardsTable)
+module Card exposing (Card, cardListDecoder, decoder, encodeCard, encodeNewCard, viewCardsTable)
 
 import Element as E exposing (px, rgb255)
 import Element.Background as Background
@@ -30,8 +30,8 @@ type alias Card =
 {- Encoders/ decoders for interactions with the backend -}
 
 
-cardDecoder : Decoder Card
-cardDecoder =
+decoder : Decoder Card
+decoder =
     Json.Decode.succeed Card
         |> required "id" Json.Decode.string
         |> required "cardSetCode" Json.Decode.string
@@ -47,8 +47,7 @@ cardDecoder =
 
 cardListDecoder : Decoder (List Card)
 cardListDecoder =
-    Json.Decode.field "data" <|
-        Json.Decode.list cardDecoder
+    Json.Decode.list decoder
 
 
 encodeCard : Card -> Encode.Value
