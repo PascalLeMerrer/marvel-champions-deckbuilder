@@ -29,8 +29,8 @@ view req =
                 ]
                 [ E.link
                     linkAttributes
-                    { url = "/new-pack"
-                    , label = E.text "Créer un pack"
+                    { url = "/new-deck"
+                    , label = E.text "Créer un deck"
                     }
                 , E.link
                     linkAttributes

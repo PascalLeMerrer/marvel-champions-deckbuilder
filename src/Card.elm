@@ -14,12 +14,14 @@ import Kind exposing (Kind)
 
 type alias Card =
     { id : String
+    , cardSetCode : String
     , code : String
     , imagesrc : Maybe String
     , isSelected : Bool
     , isDuplicateOf : Maybe String
     , kind : Kind
     , name : String
+    , quantity : Int
     , faction : Faction
     }
 
@@ -32,12 +34,14 @@ cardDecoder : Decoder Card
 cardDecoder =
     Json.Decode.succeed Card
         |> required "id" Json.Decode.string
+        |> required "cardSetCode" Json.Decode.string
         |> required "code" Json.Decode.string
         |> optional "imagesrc" (Json.Decode.map Just Json.Decode.string) Nothing
         |> hardcoded False
-        |> optional "duplicate_of_code" (Json.Decode.map Just Json.Decode.string) Nothing
+        |> optional "isDuplicateOf" (Json.Decode.map Just Json.Decode.string) Nothing
         |> required "kind" Kind.decoder
         |> required "name" Json.Decode.string
+        |> required "quantity" Json.Decode.int
         |> required "faction" Faction.decoder
 
 
@@ -51,57 +55,59 @@ encodeCard : Card -> Encode.Value
 encodeCard card =
     Encode.object <|
         [ ( "id", Encode.string card.id )
+        , ( "cardSetCode", Encode.string card.cardSetCode )
         , ( "code", Encode.string card.code )
-        , ( "kind", Encode.string (Kind.toString card.kind) )
+        , ( "faction", Faction.encode card.faction )
+        , ( "kind", Kind.encode card.kind )
+        , ( "imagesrc"
+          , case card.imagesrc of
+                Just url ->
+                    Encode.string url
+
+                Nothing ->
+                    Encode.null
+          )
+        , ( "isDuplicateOf"
+          , case card.isDuplicateOf of
+                Just code ->
+                    Encode.string code
+
+                Nothing ->
+                    Encode.null
+          )
         , ( "name", Encode.string card.name )
-        , ( "faction", Encode.string (Faction.toString card.faction) )
+        , ( "quantity", Encode.int card.quantity )
         ]
 
 
 encodeNewCard : Card -> Encode.Value
 encodeNewCard card =
     -- when creating a new card, we cannot pass an ID; the backend will generate it
+    -- TODO find a pattern to avoid this code duplication
     Encode.object <|
         [ ( "code", Encode.string card.code )
+        , ( "cardSetCode", Encode.string card.cardSetCode )
         , ( "kind", Kind.encode card.kind )
+        , ( "faction", Faction.encode card.faction )
         , ( "imagesrc"
-          , Encode.string
-                (case card.imagesrc of
-                    Just url ->
-                        url
+          , case card.imagesrc of
+                Just url ->
+                    Encode.string url
 
-                    Nothing ->
-                        ""
-                )
+                Nothing ->
+                    Encode.null
+          )
+        , ( "isDuplicateOf"
+          , case card.isDuplicateOf of
+                Just code ->
+                    Encode.string code
+
+                Nothing ->
+                    Encode.null
           )
         , ( "name", Encode.string card.name )
-        , ( "faction", card.faction |> Faction.toString |> Encode.string )
+        , ( "quantity", Encode.int card.quantity )
         ]
-
-
-decodeKind : String -> String
-decodeKind string =
-    case string of
-        "ally" ->
-            "Allié"
-
-        "event" ->
-            "Événement"
-
-        "resource" ->
-            "Ressource"
-
-        "upgrade" ->
-            "Amélioration"
-
-        "support" ->
-            "Soutien"
-
-        "hero" ->
-            "Héros"
-
-        _ ->
-            string
 
 
 

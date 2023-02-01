@@ -3,10 +3,7 @@ module Pages.ImportData exposing (Model, Msg, page)
 import Backend exposing (backendName, errorToString, saveCardListCmd, savePackListCmd)
 import Card exposing (Card, viewCardsTable)
 import Effect exposing (Effect)
-import Element as E exposing (rgb255)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Events exposing (onClick)
+import Element as E
 import Element.Font as Font
 import Gen.Params.ImportData exposing (Params)
 import Gen.Route as Route

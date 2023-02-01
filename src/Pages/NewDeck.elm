@@ -1,6 +1,8 @@
-module Pages.NewPack exposing (Model, Msg, page)
+module Pages.NewDeck exposing (Model, Msg, page)
 
+import Backend exposing (createDeckCmd)
 import Card exposing (Card, viewCardsTable)
+import Deck exposing (Deck)
 import Element as E exposing (rgb)
 import Element.Background as Background
 import Element.Border as Border
@@ -9,6 +11,7 @@ import Element.Input as Input
 import Faction exposing (Faction, basic)
 import Gen.Params.NewPack exposing (Params)
 import Gen.Route as Route
+import Http
 import Kind
 import List.Extra exposing (updateIf)
 import Page
@@ -75,7 +78,11 @@ filter affinities cards =
         selected_factions =
             basic :: affinities
     in
-    cards |> List.filter (\card -> List.member card.faction selected_factions)
+    cards
+        |> List.filter
+            (\card ->
+                List.member card.faction selected_factions
+            )
 
 
 
@@ -83,7 +90,8 @@ filter affinities cards =
 
 
 type Msg
-    = UserChangedPackTitle String
+    = BackendReturnedDeck (Result Http.Error Deck)
+    | UserChangedPackTitle String
     | UserToggledAffinity Faction Bool
     | UserChangedHeroSearchText String
     | UserChangedCardSearchText String
@@ -91,7 +99,7 @@ type Msg
     | UserClickedSelectedCard Card
     | UserClickedUnselectedHero Card
     | UserClickedSelectedHero Card
-    | NoOp
+    | UserClickedCreate
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -101,9 +109,6 @@ update msg model =
             ( { model | title = title }
             , Cmd.none
             )
-
-        NoOp ->
-            ( model, Cmd.none )
 
         UserToggledAffinity affinity checked ->
             let
@@ -117,7 +122,8 @@ update msg model =
                         List.Extra.remove affinity model.affinities
 
                     else if checked && not isSelected then
-                        affinity :: model.affinities
+                        affinity
+                            :: model.affinities
 
                     else
                         model.affinities
@@ -188,6 +194,50 @@ update msg model =
               }
             , Cmd.none
             )
+
+        UserClickedCreate ->
+            let
+                selectedHeroes : List Card
+                selectedHeroes =
+                    List.filter .isSelected model.heroSearchResult
+            in
+            case selectedHeroes of
+                heroCard :: [] ->
+                    let
+                        deck =
+                            deckBaseForHero model heroCard
+                    in
+                    ( model, createDeckCmd BackendReturnedDeck deck )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        BackendReturnedDeck (Ok deck) ->
+            Debug.todo "redirect to deck edition page"
+
+        BackendReturnedDeck (Err httpError) ->
+            Debug.todo "display error"
+
+
+deckBaseForHero : Model -> Card -> Deck
+deckBaseForHero model heroCard =
+    let
+        heroCards =
+            List.filter
+                (\c ->
+                    (c.cardSetCode == heroCard.cardSetCode)
+                        && (c.kind /= Kind.alter_ego)
+                        && (c /= heroCard)
+                )
+                model.allCards
+    in
+    { id = ""
+    , affinities = model.affinities
+    , cards = []
+    , hero = heroCard
+    , heroCards = heroCards
+    , title = model.title
+    }
 
 
 searchCard : String -> Model -> Model
@@ -296,7 +346,7 @@ viewAffinity model affinity =
 
 viewCreateButton : E.Element Msg
 viewCreateButton =
-    E.link
+    Input.button
         [ Background.color (rgb (31 / 255) (199 / 255) (170 / 255))
         , Border.color (rgb 0 0.7 0)
         , Border.rounded 7
@@ -307,7 +357,7 @@ viewCreateButton =
         , E.width (E.px 100)
         , Font.center
         ]
-        { url = ""
+        { onPress = Just UserClickedCreate
         , label = E.text "Créer"
         }
 

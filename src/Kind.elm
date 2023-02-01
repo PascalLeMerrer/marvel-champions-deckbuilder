@@ -51,28 +51,8 @@ decoder =
 
 
 encode : Kind -> Json.Encode.Value
-encode kind =
-    case kind of
-        Kind "hero" ->
-            Json.Encode.string "Hero"
-
-        Kind "ally" ->
-            Json.Encode.string "Ally"
-
-        Kind "support" ->
-            Json.Encode.string "Support"
-
-        Kind "upgrade" ->
-            Json.Encode.string "Upgrade"
-
-        Kind "event" ->
-            Json.Encode.string "Event"
-
-        Kind "alter_ego" ->
-            Json.Encode.string "Alter_ego"
-
-        Kind _ ->
-            Json.Encode.string "Resource"
+encode (Kind value) =
+    Json.Encode.string value
 
 
 toString : Kind -> String

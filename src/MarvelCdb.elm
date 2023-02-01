@@ -61,10 +61,12 @@ newCardDecoder : Decoder Card
 newCardDecoder =
     Json.Decode.succeed Card
         |> hardcoded ""
+        |> optional "card_set_code" Json.Decode.string ""
         |> required "code" Json.Decode.string
         |> optional "imagesrc" (Json.Decode.map Just Json.Decode.string) (Just "no url")
         |> hardcoded False
         |> optional "duplicate_of_code" (Json.Decode.map Just Json.Decode.string) Nothing
         |> required "type_code" Kind.decoder
         |> required "name" Json.Decode.string
+        |> required "quantity" Json.Decode.int
         |> required "faction_code" Faction.decoder

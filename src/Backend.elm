@@ -1,8 +1,9 @@
-module Backend exposing (backendName, errorToString, getCardListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
+module Backend exposing (backendName, createDeckCmd, errorToString, getCardListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
 
 {- Exchanges with Kinto -}
 
 import Card exposing (Card, cardDecoder, cardListDecoder, encodeNewCard)
+import Deck exposing (Deck, encodeDeckCreationPayload)
 import Http
 import Json.Decode exposing (Decoder)
 import Json.Encode as Encode
@@ -215,3 +216,20 @@ errorToString serverName error =
 
         Http.BadBody body ->
             serverName ++ " server returned an unexpected content " ++ body
+
+
+
+-- DECKS --
+
+
+createDeckCmd : (Result Http.Error Deck -> msg) -> Deck -> Cmd msg
+createDeckCmd msg cards =
+    Http.request
+        { method = "POST"
+        , headers = [ authHeader ]
+        , url = baseUrl ++ "/buckets/deckbuilder/collections/decks/records"
+        , body = Http.jsonBody (encodeDeckCreationPayload cards)
+        , expect = Http.expectJson msg Deck.decoder
+        , timeout = timeOutMiliseconds
+        , tracker = Nothing
+        }
