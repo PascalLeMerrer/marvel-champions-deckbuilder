@@ -36,6 +36,15 @@ view req =
                         |> withWidth 150
                         |> withFontSize 16
                     )
+                    { url = "/decks"
+                    , label = E.text "Mes decks"
+                    }
+                , E.link
+                    (Button.styles
+                        |> withKind Button.Secondary
+                        |> withWidth 150
+                        |> withFontSize 16
+                    )
                     { url = "/new-deck"
                     , label = E.text "Créer un deck"
                     }

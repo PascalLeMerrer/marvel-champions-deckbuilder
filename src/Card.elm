@@ -11,6 +11,7 @@ import Json.Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
 import Json.Encode as Encode
 import Kind exposing (Kind)
+import Table
 
 
 type alias Card =
@@ -130,7 +131,7 @@ viewCardsTable cards selectMsg unselectMsg options =
         countColumn : List (E.IndexedColumn Card msg)
         countColumn =
             if options.showCount then
-                [ { header = E.el headerAttributes (E.text "Quantité")
+                [ { header = E.el Table.headerAttributes (E.text "Quantité")
                   , width = E.fill
                   , view = \index card -> E.el (rowAttributes selectMsg unselectMsg index card) (E.text <| String.fromInt card.quantity)
                   }
@@ -147,23 +148,23 @@ viewCardsTable cards selectMsg unselectMsg options =
             ]
             { data = sortedCards
             , columns =
-                [ { header = E.el headerAttributes (E.text "Carte")
+                [ { header = E.el Table.headerAttributes (E.text "Carte")
                   , width = E.fill
                   , view = viewCard selectMsg unselectMsg
                   }
-                , { header = E.el headerAttributes (E.text "Code")
+                , { header = E.el Table.headerAttributes (E.text "Code")
                   , width = E.fill
                   , view =
                         \index card ->
                             E.el (rowAttributes selectMsg unselectMsg index card) (E.text card.code)
                   }
-                , { header = E.el headerAttributes (E.text "Nom")
+                , { header = E.el Table.headerAttributes (E.text "Nom")
                   , width = E.fill
                   , view =
                         \index card ->
                             E.el (rowAttributes selectMsg unselectMsg index card) (E.text card.name)
                   }
-                , { header = E.el headerAttributes (E.text "Type")
+                , { header = E.el Table.headerAttributes (E.text "Type")
                   , width = E.fill
                   , view =
                         \index card ->
@@ -207,23 +208,6 @@ rowAttributes selectMsg unselectMsg index card =
             else
                 [ onClick (selectMsg card) ]
            )
-
-
-headerAttributes : List (E.Attribute msg)
-headerAttributes =
-    [ Background.color darkGreen
-    , E.alignTop
-    , Font.bold
-    , Font.size 13
-    , E.paddingXY 5 10
-    , Border.widthEach
-        { bottom = 1
-        , left = 0
-        , right = 0
-        , top = 0
-        }
-    , Border.color charcoal
-    ]
 
 
 viewCard : (Card -> msg) -> (Card -> msg) -> Int -> Card -> E.Element msg

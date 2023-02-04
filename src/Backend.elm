@@ -1,4 +1,4 @@
-module Backend exposing (backendName, createDeckCmd, createPack, errorToString, getCardListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
+module Backend exposing (backendName, createDeckCmd, createPack, errorToString, getCardListCmd, getDeckListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
 
 {- Exchanges with Kinto -}
 
@@ -273,10 +273,6 @@ deckRecord =
     Kinto.recordResource bucketName deckCollectionName Deck.decoder
 
 
-
--- TODO use
-
-
 createDeckCmd : Deck -> (Result Kinto.Error Deck -> msg) -> Cmd msg
 createDeckCmd deck msg =
     let
@@ -285,4 +281,12 @@ createDeckCmd deck msg =
     in
     client
         |> Kinto.create deckRecord data msg
+        |> Kinto.send
+
+
+getDeckListCmd : (Result Kinto.Error (Kinto.Pager Deck) -> msg) -> Cmd msg
+getDeckListCmd msg =
+    client
+        |> Kinto.getList deckRecord msg
+        |> Kinto.sort [ "title" ]
         |> Kinto.send
