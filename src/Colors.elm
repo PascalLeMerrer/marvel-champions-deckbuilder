@@ -37,6 +37,16 @@ grey =
     rgb255 205 203 203
 
 
+darkGrey : Element.Color
+darkGrey =
+    rgb255 164 160 160
+
+
 darkerGrey : Element.Color
 darkerGrey =
+    rgb255 123 116 116
+
+
+charcoal : Element.Color
+charcoal =
     rgb255 62 62 62

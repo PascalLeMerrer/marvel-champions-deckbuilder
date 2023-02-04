@@ -1,6 +1,7 @@
 module Pages.NewDeck exposing (Model, Msg, page)
 
 import Backend exposing (createDeckCmd)
+import Button exposing (button)
 import Card exposing (Card, viewCardsTable)
 import Colors exposing (darkGreen, darkerGreen, white)
 import Deck exposing (Deck)
@@ -305,23 +306,7 @@ viewAffinity model affinity =
 
 viewCreateButton : E.Element Msg
 viewCreateButton =
-    Input.button
-        [ Background.color darkGreen
-        , E.mouseOver
-            [ Background.color darkerGreen
-            ]
-        , Border.color darkerGreen
-        , Border.rounded 7
-        , E.alignRight
-        , E.padding 10
-        , Font.size 14
-        , Font.color white
-        , E.width (E.px 100)
-        , Font.center
-        ]
-        { onPress = Just UserClickedCreate
-        , label = E.text "Créer"
-        }
+    button Button.Primary "Créer" 100 14 UserClickedCreate
 
 
 viewHeroSearch : Model -> E.Element Msg

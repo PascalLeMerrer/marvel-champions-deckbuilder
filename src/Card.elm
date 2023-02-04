@@ -1,6 +1,6 @@
 module Card exposing (Card, cardListDecoder, decoder, encodeCard, encodeNewCard, viewCardsTable)
 
-import Colors exposing (black, darkGreen, darkerGreen, darkerGrey, grey, lightGrey, lighterGreen, white)
+import Colors exposing (black, charcoal, darkGreen, darkerGreen, grey, lightGrey, lighterGreen, white)
 import Element as E exposing (px)
 import Element.Background as Background
 import Element.Border as Border
@@ -141,7 +141,7 @@ viewCardsTable cards selectMsg unselectMsg options =
     in
     if List.length sortedCards > 0 then
         E.indexedTable
-            [ Border.color darkerGrey
+            [ Border.color charcoal
             , Font.size 11
             , Font.color white
             ]
@@ -222,7 +222,7 @@ headerAttributes =
         , right = 0
         , top = 0
         }
-    , Border.color darkerGrey
+    , Border.color charcoal
     ]
 
 

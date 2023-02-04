@@ -1,5 +1,6 @@
 module Pages.Home_ exposing (page)
 
+import Button exposing (withFontSize, withKind, withWidth)
 import Colors exposing (darkGreen, darkerGreen, white)
 import Element as E exposing (px)
 import Element.Background as Background
@@ -30,31 +31,23 @@ view req =
                 , E.spacing 20
                 ]
                 [ E.link
-                    linkAttributes
+                    (Button.styles
+                        |> withKind Button.Primary
+                        |> withWidth 150
+                        |> withFontSize 16
+                    )
                     { url = "/new-deck"
                     , label = E.text "Créer un deck"
                     }
                 , E.link
-                    linkAttributes
+                    (Button.styles
+                        |> withKind Button.Secondary
+                        |> withWidth 150
+                        |> withFontSize 16
+                    )
                     { url = "/import-data"
                     , label = E.text "Importer"
                     }
                 ]
         ]
     }
-
-
-linkAttributes : List (E.Attr () msg)
-linkAttributes =
-    [ Background.color darkGreen
-    , Border.color darkerGreen
-    , E.mouseOver
-        [ Background.color darkerGreen
-        ]
-    , Border.rounded 7
-    , E.padding 10
-    , E.width <| px 150
-    , Font.center
-    , Font.size 16
-    , Font.color white
-    ]
