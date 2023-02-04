@@ -1,6 +1,7 @@
 module Card exposing (Card, cardListDecoder, decoder, encodeCard, encodeNewCard, viewCardsTable)
 
-import Element as E exposing (px, rgb255)
+import Colors exposing (black, darkGreen, darkerGreen, darkerGrey, grey, lightGrey, lighterGreen, white)
+import Element as E exposing (px)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -140,10 +141,9 @@ viewCardsTable cards selectMsg unselectMsg options =
     in
     if List.length sortedCards > 0 then
         E.indexedTable
-            [ Border.color (rgb255 3 95 22)
-            , Border.solid
-            , Border.width 1
+            [ Border.color darkerGrey
             , Font.size 11
+            , Font.color white
             ]
             { data = sortedCards
             , columns =
@@ -181,16 +181,25 @@ rowAttributes : (Card -> msg) -> (Card -> msg) -> Int -> Card -> List (E.Attribu
 rowAttributes selectMsg unselectMsg index card =
     [ Background.color <|
         if modBy 2 index == 0 then
-            rgb255 205 203 203
+            grey
 
         else
-            rgb255 246 244 244
+            lightGrey
+    , E.mouseOver
+        [ if card.isSelected then
+            Font.color white
+
+          else
+            Font.color darkerGreen
+        ]
     , E.alignTop
     , E.padding 5
     , E.pointer
+    , E.height E.fill
+    , Font.color black
     ]
         ++ (if card.isSelected then
-                [ Background.color <| rgb255 205 238 150
+                [ Background.color lighterGreen
                 , Font.heavy
                 , onClick (unselectMsg card)
                 ]
@@ -202,17 +211,18 @@ rowAttributes selectMsg unselectMsg index card =
 
 headerAttributes : List (E.Attribute msg)
 headerAttributes =
-    [ Background.color <| rgb255 31 199 170
+    [ Background.color darkGreen
     , E.alignTop
     , Font.bold
-    , E.padding 5
+    , Font.size 13
+    , E.paddingXY 5 10
     , Border.widthEach
         { bottom = 1
         , left = 0
         , right = 0
         , top = 0
         }
-    , Border.color <| rgb255 62 62 62
+    , Border.color darkerGrey
     ]
 
 

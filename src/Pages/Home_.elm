@@ -1,9 +1,11 @@
 module Pages.Home_ exposing (page)
 
-import Element as E exposing (rgb, rgb255)
+import Colors exposing (darkGreen, darkerGreen, white)
+import Element as E exposing (px)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Header
 import Page exposing (Page)
 import Request exposing (Request)
 import Shared
@@ -21,11 +23,11 @@ view : Request -> View msg
 view req =
     { title = "Homepage"
     , body =
-        [ E.layout [] <|
+        [ E.layout [ E.width E.fill, E.height E.fill, E.inFront <| Header.view Nothing ] <|
             E.column
                 [ E.centerX
                 , E.centerY
-                , E.spacing 10
+                , E.spacing 20
                 ]
                 [ E.link
                     linkAttributes
@@ -44,10 +46,15 @@ view req =
 
 linkAttributes : List (E.Attr () msg)
 linkAttributes =
-    [ Background.color (rgb255 31 199 170)
-    , Border.color (rgb 0 0.7 0)
+    [ Background.color darkGreen
+    , Border.color darkerGreen
+    , E.mouseOver
+        [ Background.color darkerGreen
+        ]
     , Border.rounded 7
     , E.padding 10
-    , Font.size 14
-    , Font.color (rgb 1 1 1)
+    , E.width <| px 150
+    , Font.center
+    , Font.size 16
+    , Font.color white
     ]

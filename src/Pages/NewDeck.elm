@@ -2,8 +2,9 @@ module Pages.NewDeck exposing (Model, Msg, page)
 
 import Backend exposing (createDeckCmd)
 import Card exposing (Card, viewCardsTable)
+import Colors exposing (darkGreen, darkerGreen, white)
 import Deck exposing (Deck)
-import Element as E exposing (rgb)
+import Element as E exposing (rgb, rgb255)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -11,6 +12,7 @@ import Element.Input as Input
 import Faction exposing (Faction, basic)
 import Gen.Params.NewPack exposing (Params)
 import Gen.Route as Route
+import Header
 import Kind
 import Kinto
 import List.Extra exposing (updateIf)
@@ -236,17 +238,15 @@ view model =
     { title = "Import"
     , body =
         [ E.layout
-            [ E.width E.fill ]
+            [ E.width E.fill, E.height E.fill, E.inFront (Header.view <| Just "Créer un deck") ]
           <|
             E.el
-                [ E.centerX
-                , E.width E.fill
-                , E.padding 20
+                [ E.paddingXY 20 80
                 ]
                 (E.column
                     [ Font.size 11
                     , E.spacing 20
-                    , E.width E.fill
+                    , E.width E.shrink
                     ]
                     [ viewTitleInput model
                     , viewHeroSearch model
@@ -306,13 +306,16 @@ viewAffinity model affinity =
 viewCreateButton : E.Element Msg
 viewCreateButton =
     Input.button
-        [ Background.color (rgb (31 / 255) (199 / 255) (170 / 255))
-        , Border.color (rgb 0 0.7 0)
+        [ Background.color darkGreen
+        , E.mouseOver
+            [ Background.color darkerGreen
+            ]
+        , Border.color darkerGreen
         , Border.rounded 7
+        , E.alignRight
         , E.padding 10
         , Font.size 14
-        , Font.color (rgb 1 1 1)
-        , E.alignRight
+        , Font.color white
         , E.width (E.px 100)
         , Font.center
         ]

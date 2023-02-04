@@ -1,11 +1,12 @@
 module Pages.Deck.Id_ exposing (Model, Msg, page)
 
 import Card exposing (Card, viewCardsTable)
-import Element as E exposing (rgb)
+import Element as E
 import Element.Font as Font
 import Element.Input as Input
 import Faction exposing (Faction, basic)
 import Gen.Params.Deck.Id_ exposing (Params)
+import Header
 import List.Extra exposing (updateIf)
 import Page
 import Request
@@ -138,12 +139,10 @@ view model =
     { title = "Import"
     , body =
         [ E.layout
-            [ E.width E.fill ]
+            [ E.width E.fill, E.height E.fill, E.inFront (Header.view <| Just "Modifier un deck") ]
           <|
             E.el
-                [ E.centerX
-                , E.width E.fill
-                , E.padding 20
+                [ E.paddingXY 20 80
                 ]
                 (E.column
                     [ Font.size 11

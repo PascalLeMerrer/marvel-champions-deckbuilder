@@ -7,6 +7,7 @@ import Element as E
 import Element.Font as Font
 import Gen.Params.ImportData exposing (Params)
 import Gen.Route as Route
+import Header
 import Http
 import List.Extra exposing (updateIf)
 import MarvelCdb exposing (loadAllCardsFromMarvelCdbCmd, loadAllPacksFromMarvelCdbCmd, marvelCDBName)
@@ -220,9 +221,9 @@ view model =
     { title = "Import"
     , body =
         [ E.layout
-            []
+            [ E.width E.fill, E.height E.fill, E.inFront (Header.view <| Just "Import") ]
             (E.column
-                [ E.padding 20
+                [ E.paddingXY 20 80
                 , E.spacing 20
                 , E.width E.fill
                 ]
