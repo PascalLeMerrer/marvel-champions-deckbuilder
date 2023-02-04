@@ -7,6 +7,7 @@ import Element as E
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Faction
 import Gen.Params.Decks exposing (Params)
 import Header
 import Kinto exposing (errorToString)
@@ -106,11 +107,19 @@ viewDecks model =
         , Font.size 11
         , Font.color white
         ]
-        { data = model.decks
+        { data = model.decks |> List.sortBy (.hero >> .name)
         , columns =
-            [ { header = E.el Table.headerAttributes (E.text "Titre")
+            [ { header = E.el Table.headerAttributes (E.text "Héros")
               , width = E.fill
-              , view = viewDeck
+              , view = viewHero
+              }
+            , { header = E.el Table.headerAttributes (E.text "Titre")
+              , width = E.fill
+              , view = viewTitle
+              }
+            , { header = E.el Table.headerAttributes (E.text "Affinités")
+              , width = E.fill
+              , view = viewAffinities
               }
             ]
         }
@@ -135,10 +144,33 @@ rowAttributes index =
     ]
 
 
-viewDeck : Int -> Deck -> E.Element msg
-viewDeck index deck =
+viewTitle : Int -> Deck -> E.Element msg
+viewTitle index deck =
     E.el (rowAttributes index) <|
         E.link []
             { label = E.text deck.title
+            , url = "/deck/" ++ deck.id
+            }
+
+
+viewHero : Int -> Deck -> E.Element msg
+viewHero index deck =
+    E.el (rowAttributes index) <|
+        E.link []
+            { label = E.text deck.hero.name
+            , url = "/deck/" ++ deck.id
+            }
+
+
+viewAffinities : Int -> Deck -> E.Element msg
+viewAffinities index deck =
+    E.el (rowAttributes index) <|
+        E.link []
+            { label =
+                E.text
+                    (deck.affinities
+                        |> List.map Faction.toString
+                        |> String.join ", "
+                    )
             , url = "/deck/" ++ deck.id
             }
