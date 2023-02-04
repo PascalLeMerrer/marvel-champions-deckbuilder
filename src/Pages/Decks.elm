@@ -35,6 +35,7 @@ page shared req =
 type alias Model =
     { decks : List Deck
     , error : Maybe String
+    , isLoaded : Bool
     }
 
 
@@ -42,6 +43,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { decks = []
       , error = Nothing
+      , isLoaded = False
       }
     , getDeckListCmd BackendReturnedDeckList
     )
@@ -59,7 +61,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         BackendReturnedDeckList (Ok decks) ->
-            ( { model | decks = decks.objects }
+            ( { model
+                | decks = decks.objects
+                , isLoaded = True
+              }
             , Cmd.none
             )
 
@@ -95,9 +100,29 @@ view model =
             E.el
                 [ E.paddingXY 20 80
                 ]
-                (viewDecks model)
+                (viewBody model)
         ]
     }
+
+
+viewBody : Model -> E.Element msg
+viewBody model =
+    if model.isLoaded then
+        if List.isEmpty model.decks then
+            E.link
+                [ E.mouseOver
+                    [ Font.color darkerGreen
+                    ]
+                ]
+                { url = "/new-deck"
+                , label = E.text "Vous n'avez aucun deck. Cliquez ici pour créer votre premier deck."
+                }
+
+        else
+            viewDecks model
+
+    else
+        E.text "Chargement en cours..."
 
 
 viewDecks : Model -> E.Element msg
