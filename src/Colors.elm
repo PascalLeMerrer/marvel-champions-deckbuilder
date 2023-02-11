@@ -50,3 +50,28 @@ darkerGrey =
 charcoal : Element.Color
 charcoal =
     rgb255 62 62 62
+
+
+lighterRed : Element.Color
+lighterRed =
+    rgb255 252 155 167
+
+
+lightRed : Element.Color
+lightRed =
+    rgb255 248 51 74
+
+
+red : Element.Color
+red =
+    rgb255 248 0 29
+
+
+darkRed : Element.Color
+darkRed =
+    rgb255 224 0 26
+
+
+darkerRed : Element.Color
+darkerRed =
+    rgb255 144 1 18

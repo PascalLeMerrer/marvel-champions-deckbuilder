@@ -1,12 +1,16 @@
 module Pages.Deck.Id_ exposing (Model, Msg, page)
 
+import Backend exposing (createDeckCmd, getDeckCmd, saveDeckCmd)
 import Card exposing (Card, viewCardsTable)
+import Deck exposing (Deck)
 import Element as E
 import Element.Font as Font
 import Element.Input as Input
+import Error exposing (viewError)
 import Faction exposing (Faction, basic)
 import Gen.Params.Deck.Id_ exposing (Params)
 import Header
+import Kinto
 import List.Extra exposing (updateIf)
 import Page
 import Request
@@ -33,8 +37,28 @@ type alias Model =
     , availableCards : List Card
     , cardSearchResult : List Card
     , cardSearchText : String
+    , deck : Maybe Deck
+    , error : Maybe String
     , selectedCards : List Card
     }
+
+
+withAvailableCards : List Card -> Model -> Model
+withAvailableCards cards model =
+    { model | availableCards = cards }
+
+
+withSelectedCards : List Card -> Model -> Model
+withSelectedCards cards model =
+    case model.deck of
+        Just deck ->
+            { model
+                | selectedCards = Debug.log "New cards in deck" cards
+                , deck = Just { deck | cards = cards }
+            }
+
+        Nothing ->
+            model
 
 
 init : Shared.Model -> Request.With Params -> ( Model, Cmd Msg )
@@ -43,10 +67,11 @@ init shared req =
       , availableCards = filter [] shared.cards
       , cardSearchResult = []
       , cardSearchText = ""
-      , selectedCards = []
+      , deck = Nothing
+      , error = Nothing
+      , selectedCards = [] -- TODO load from DB if the deck already exists
       }
-    , -- TODO load deck
-      Cmd.none
+    , getDeckCmd req.params.id BackendReturnedDeck
     )
 
 
@@ -55,9 +80,11 @@ init shared req =
 
 
 type Msg
-    = UserChangedCardSearchText String
+    = BackendReturnedDeck (Result Kinto.Error Deck)
+    | UserChangedCardSearchText String
     | UserClickedUnselectedCard Card
     | UserClickedSelectedCard Card
+    | UserChangedCardQuantity Card Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -71,7 +98,7 @@ update msg model =
         UserClickedUnselectedCard card ->
             ( { model
                 | cardSearchResult =
-                    List.map (\c -> { c | isSelected = c == card }) model.cardSearchResult
+                    List.map (\c -> { c | isImageVisible = c == card }) model.cardSearchResult
               }
             , Cmd.none
             )
@@ -79,8 +106,68 @@ update msg model =
         UserClickedSelectedCard card ->
             ( { model
                 | cardSearchResult =
-                    updateIf (\c -> c == card) (\_ -> { card | isSelected = False }) model.cardSearchResult
+                    updateIf (\c -> c == card) (\_ -> { card | isImageVisible = False }) model.cardSearchResult
               }
+            , Cmd.none
+            )
+
+        UserChangedCardQuantity card quantity ->
+            let
+                newCard =
+                    { card | selectedQuantity = quantity }
+
+                selectedCards =
+                    if List.member card model.selectedCards then
+                        if quantity == 0 then
+                            --remove the card from the selection
+                            List.filter (\c -> c.id /= card.id) model.selectedCards
+
+                        else
+                            List.Extra.updateIf (\c -> c.id == card.id) (\c -> newCard) model.selectedCards
+
+                    else
+                        newCard :: model.selectedCards
+
+                availableCards =
+                    if quantity == 0 then
+                        if List.member card model.availableCards then
+                            -- we reset to 0 the quantity of an available card
+                            List.Extra.updateIf (\c -> c.id == card.id) (\c -> newCard) model.availableCards
+
+                        else
+                            -- the card is just removed from selection, we add it back to available cards
+                            newCard :: model.availableCards
+
+                    else
+                        -- the card is moved to selectedCards, we remove it from available cards
+                        List.filter (\c -> c.id /= card.id) model.availableCards
+
+                updatedModel =
+                    model
+                        |> withAvailableCards availableCards
+                        |> withSelectedCards selectedCards
+                        |> searchCard model.cardSearchText
+            in
+            ( updatedModel
+            , case updatedModel.deck of
+                Just deck ->
+                    saveDeckCmd deck BackendReturnedDeck
+
+                Nothing ->
+                    Cmd.none
+            )
+
+        BackendReturnedDeck (Ok deck) ->
+            ( { model
+                | deck = Just deck
+                , availableCards = filter deck.affinities model.allCards
+                , selectedCards = deck.cards
+              }
+            , Cmd.none
+            )
+
+        BackendReturnedDeck (Err kintoError) ->
+            ( { model | error = Just (Kinto.errorToString kintoError) }
             , Cmd.none
             )
 
@@ -149,17 +236,48 @@ view model =
                     , E.spacing 20
                     , E.width E.fill
                     ]
-                    [ viewCardSearch model
+                    [ viewError model
+                    , viewDeckTitle model
+                    , viewSubtitle "Rechercher une carte"
+                    , viewCardSearch model
                     , viewCardsTable model.cardSearchResult
-                        UserClickedUnselectedCard
-                        UserClickedSelectedCard
                         { showCount = True
                         , action = Nothing
+                        , selectMsg = UserClickedUnselectedCard
+                        , unselectMsg = UserClickedSelectedCard
+                        , quantityChangedMsg = Just UserChangedCardQuantity
+                        }
+                    , if List.isEmpty model.selectedCards then
+                        E.none
+
+                      else
+                        viewSubtitle "Cartes dans le deck"
+                    , viewCardsTable model.selectedCards
+                        { showCount = True
+                        , action = Nothing
+                        , selectMsg = UserClickedUnselectedCard -- FIXME
+                        , unselectMsg = UserClickedSelectedCard -- FIXME
+                        , quantityChangedMsg = Just UserChangedCardQuantity
                         }
                     ]
                 )
         ]
     }
+
+
+viewDeckTitle : Model -> E.Element Msg
+viewDeckTitle model =
+    case model.deck of
+        Just deck ->
+            E.el
+                [ Font.size 20
+                , Font.bold
+                ]
+            <|
+                E.text deck.title
+
+        Nothing ->
+            E.none
 
 
 viewCardSearch : Model -> E.Element Msg
@@ -173,3 +291,13 @@ viewCardSearch model =
         , placeholder = Just <| Input.placeholder [] (E.text "Nom de la carte")
         , label = Input.labelAbove [] (E.text "Carte")
         }
+
+
+viewSubtitle : String -> E.Element msg
+viewSubtitle subtitle =
+    E.el
+        [ Font.size 14
+        , Font.bold
+        ]
+    <|
+        E.text subtitle

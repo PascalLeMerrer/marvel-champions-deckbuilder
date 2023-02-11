@@ -70,3 +70,4 @@ newCardDecoder =
         |> required "name" Json.Decode.string
         |> required "quantity" Json.Decode.int
         |> required "faction_code" Faction.decoder
+        |> hardcoded 0

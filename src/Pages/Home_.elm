@@ -1,11 +1,7 @@
 module Pages.Home_ exposing (page)
 
 import Button exposing (withFontSize, withKind, withWidth)
-import Colors exposing (darkGreen, darkerGreen, white)
-import Element as E exposing (px)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Font as Font
+import Element as E
 import Header
 import Page exposing (Page)
 import Request exposing (Request)

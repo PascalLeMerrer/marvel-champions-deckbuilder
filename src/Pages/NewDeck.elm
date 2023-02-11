@@ -10,6 +10,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Error exposing (viewError)
 import Faction exposing (Faction, basic)
 import Gen.Params.NewPack exposing (Params)
 import Gen.Route as Route
@@ -132,7 +133,7 @@ update msg model =
         UserClickedUnselectedHero card ->
             ( { model
                 | heroSearchResult =
-                    List.map (\c -> { c | isSelected = c == card }) model.heroSearchResult
+                    List.map (\c -> { c | isImageVisible = c == card }) model.heroSearchResult
               }
             , Cmd.none
             )
@@ -140,7 +141,7 @@ update msg model =
         UserClickedSelectedHero card ->
             ( { model
                 | heroSearchResult =
-                    updateIf (\c -> c == card) (\_ -> { card | isSelected = False }) model.heroSearchResult
+                    updateIf (\c -> c == card) (\_ -> { card | isImageVisible = False }) model.heroSearchResult
               }
             , Cmd.none
             )
@@ -171,7 +172,7 @@ update msg model =
             let
                 selectedHeroes : List Card
                 selectedHeroes =
-                    List.filter .isSelected model.heroSearchResult
+                    List.filter .isImageVisible model.heroSearchResult
             in
             case selectedHeroes of
                 heroCard :: [] ->
@@ -194,7 +195,6 @@ update msg model =
             )
 
         BackendReturnedDeck (Err kintoError) ->
-            -- TODO display error
             ( { model | error = Just ("Deck creation failed: " ++ Kinto.errorToString kintoError) }
             , Cmd.none
             )
@@ -249,13 +249,15 @@ view model =
                     , E.spacing 20
                     , E.width E.shrink
                     ]
-                    [ viewTitleInput model
+                    [ viewError model
+                    , viewTitleInput model
                     , viewHeroSearch model
                     , viewCardsTable model.heroSearchResult
-                        UserClickedUnselectedHero
-                        UserClickedSelectedHero
-                        { showCount = True
+                        { showCount = False
                         , action = Nothing
+                        , selectMsg = UserClickedUnselectedHero
+                        , unselectMsg = UserClickedSelectedHero
+                        , quantityChangedMsg = Nothing
                         }
                     , viewAffinities model
                     , viewCreateButton

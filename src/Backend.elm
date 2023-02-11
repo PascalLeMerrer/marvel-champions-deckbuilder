@@ -1,4 +1,4 @@
-module Backend exposing (backendName, createDeckCmd, createPack, errorToString, getCardListCmd, getDeckListCmd, getPackListCmd, saveCardListCmd, savePackListCmd)
+module Backend exposing (backendName, createDeckCmd, createPack, errorToString, getCardListCmd, getDeckCmd, getDeckListCmd, getPackListCmd, saveCardListCmd, saveDeckCmd, savePackListCmd)
 
 {- Exchanges with Kinto -}
 
@@ -284,9 +284,27 @@ createDeckCmd deck msg =
         |> Kinto.send
 
 
+saveDeckCmd : Deck -> (Result Kinto.Error Deck -> msg) -> Cmd msg
+saveDeckCmd deck msg =
+    let
+        data =
+            Deck.encode deck
+    in
+    client
+        |> Kinto.replace deckRecord deck.id data msg
+        |> Kinto.send
+
+
 getDeckListCmd : (Result Kinto.Error (Kinto.Pager Deck) -> msg) -> Cmd msg
 getDeckListCmd msg =
     client
         |> Kinto.getList deckRecord msg
         |> Kinto.sort [ "title" ]
+        |> Kinto.send
+
+
+getDeckCmd : String -> (Result Kinto.Error Deck -> msg) -> Cmd msg
+getDeckCmd deckId msg =
+    client
+        |> Kinto.get deckRecord deckId msg
         |> Kinto.send

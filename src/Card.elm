@@ -1,11 +1,13 @@
 module Card exposing (Card, cardListDecoder, decoder, encodeCard, encodeNewCard, viewCardsTable)
 
+import Button exposing (button)
 import Colors exposing (black, charcoal, darkGreen, darkerGreen, grey, lightGrey, lighterGreen, white)
-import Element as E exposing (px)
+import Element as E exposing (px, spacing)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
+import Element.Input as Input
 import Faction exposing (Faction)
 import Json.Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
@@ -19,12 +21,13 @@ type alias Card =
     , cardSetCode : String
     , code : String
     , imagesrc : Maybe String
-    , isSelected : Bool
+    , isImageVisible : Bool
     , isDuplicateOf : Maybe String
     , kind : Kind
     , name : String
     , quantity : Int
     , faction : Faction
+    , selectedQuantity : Int -- in a deck
     }
 
 
@@ -45,6 +48,7 @@ decoder =
         |> required "name" Json.Decode.string
         |> required "quantity" Json.Decode.int
         |> required "faction" Faction.decoder
+        |> required "selectedQuantity" Json.Decode.int
 
 
 cardListDecoder : Decoder (List Card)
@@ -78,6 +82,7 @@ encodeCard card =
           )
         , ( "name", Encode.string card.name )
         , ( "quantity", Encode.int card.quantity )
+        , ( "selectedQuantity", Encode.int card.selectedQuantity )
         ]
 
 
@@ -108,6 +113,7 @@ encodeNewCard card =
           )
         , ( "name", Encode.string card.name )
         , ( "quantity", Encode.int card.quantity )
+        , ( "selectedQuantity", Encode.int card.selectedQuantity )
         ]
 
 
@@ -118,11 +124,16 @@ encodeNewCard card =
 type alias Options msg =
     { showCount : Bool
     , action : Maybe (E.Element msg)
+    , selectMsg :
+        Card
+        -> msg -- TOD distinguer click pour sélectionner et click pour afficher/masquer l'image
+    , unselectMsg : Card -> msg
+    , quantityChangedMsg : Maybe (Card -> Int -> msg)
     }
 
 
-viewCardsTable : List Card -> (Card -> msg) -> (Card -> msg) -> Options msg -> E.Element msg
-viewCardsTable cards selectMsg unselectMsg options =
+viewCardsTable : List Card -> Options msg -> E.Element msg
+viewCardsTable cards options =
     let
         sortedCards : List Card
         sortedCards =
@@ -130,15 +141,26 @@ viewCardsTable cards selectMsg unselectMsg options =
 
         countColumn : List (E.IndexedColumn Card msg)
         countColumn =
-            if options.showCount then
-                [ { header = E.el Table.headerAttributes (E.text "Quantité")
-                  , width = E.fill
-                  , view = \index card -> E.el (rowAttributes selectMsg unselectMsg index card) (E.text <| String.fromInt card.quantity)
-                  }
-                ]
+            case ( options.showCount, options.quantityChangedMsg ) of
+                ( True, Nothing ) ->
+                    [ { header = E.el Table.headerAttributes (E.text "Quantité")
+                      , width = E.fill
+                      , view = \index card -> E.el (rowAttributes index card) (E.text <| String.fromInt card.quantity)
+                      }
+                    ]
 
-            else
-                []
+                ( False, Nothing ) ->
+                    []
+
+                ( _, Just quantityChangedMsg ) ->
+                    [ { header = E.el Table.headerAttributes (E.text "Quantité")
+                      , width = E.fill
+                      , view =
+                            \index card ->
+                                E.el (rowAttributes index card)
+                                    (viewQuantity quantityChangedMsg card)
+                      }
+                    ]
     in
     if List.length sortedCards > 0 then
         E.indexedTable
@@ -150,36 +172,36 @@ viewCardsTable cards selectMsg unselectMsg options =
             , columns =
                 [ { header = E.el Table.headerAttributes (E.text "Carte")
                   , width = E.fill
-                  , view = viewCard selectMsg unselectMsg
+                  , view = viewImage options
                   }
                 , { header = E.el Table.headerAttributes (E.text "Code")
                   , width = E.fill
                   , view =
                         \index card ->
-                            E.el (rowAttributes selectMsg unselectMsg index card) (E.text card.code)
+                            E.el (rowAttributes index card) (E.text card.code)
                   }
                 , { header = E.el Table.headerAttributes (E.text "Nom")
                   , width = E.fill
                   , view =
                         \index card ->
-                            E.el (rowAttributes selectMsg unselectMsg index card) (E.text card.name)
+                            E.el (rowAttributes index card) (E.text card.name)
                   }
                 , { header = E.el Table.headerAttributes (E.text "Type")
                   , width = E.fill
                   , view =
                         \index card ->
-                            E.el (rowAttributes selectMsg unselectMsg index card) (E.text <| Kind.toString card.kind)
+                            E.el (rowAttributes index card) (E.text <| Kind.toString card.kind)
                   }
                 ]
                     ++ countColumn
             }
 
     else
-        E.text ""
+        E.none
 
 
-rowAttributes : (Card -> msg) -> (Card -> msg) -> Int -> Card -> List (E.Attribute msg)
-rowAttributes selectMsg unselectMsg index card =
+rowAttributes : Int -> Card -> List (E.Attribute msg)
+rowAttributes index card =
     [ Background.color <|
         if modBy 2 index == 0 then
             grey
@@ -187,7 +209,7 @@ rowAttributes selectMsg unselectMsg index card =
         else
             lightGrey
     , E.mouseOver
-        [ if card.isSelected then
+        [ if card.isImageVisible then
             Font.color white
 
           else
@@ -199,31 +221,67 @@ rowAttributes selectMsg unselectMsg index card =
     , E.height E.fill
     , Font.color black
     ]
-        ++ (if card.isSelected then
+        ++ (if card.isImageVisible then
                 [ Background.color lighterGreen
                 , Font.heavy
-                , onClick (unselectMsg card)
                 ]
 
             else
-                [ onClick (selectMsg card) ]
+                []
            )
 
 
-viewCard : (Card -> msg) -> (Card -> msg) -> Int -> Card -> E.Element msg
-viewCard selectMsg unselectMsg index card =
+viewImage : Options msg -> Int -> Card -> E.Element msg
+viewImage options index card =
     let
         attributes =
-            rowAttributes selectMsg unselectMsg index card
+            rowAttributes index card
+
+        makeClickable : List (E.Attr () msg) -> List (E.Attr () msg)
+        makeClickable attributeList =
+            (if card.isImageVisible then
+                onClick (options.unselectMsg card)
+
+             else
+                onClick (options.selectMsg card)
+            )
+                :: attributeList
+
+        addImageDimensions : List (E.Attribute msg) -> List (E.Attribute msg)
+        addImageDimensions attributeList =
+            [ E.width (px 300), E.height (px 400) ] ++ attributeList
     in
-    case ( card.imagesrc, card.isSelected ) of
+    case ( card.imagesrc, card.isImageVisible ) of
         ( _, False ) ->
-            E.el (Font.italic :: attributes) <| E.text "Cliquer pour afficher l'image"
+            E.el (Font.italic :: attributes |> makeClickable) <| E.text "Cliquer pour afficher l'image"
 
         ( Nothing, True ) ->
-            E.el (Font.italic :: attributes) <| E.text "Cliquer pour afficher l'image"
+            E.el (Font.italic :: attributes) <| E.text "Image non disponible"
 
         ( Just path, True ) ->
             E.image
-                (attributes ++ [ E.width (px 300), E.height (px 400) ])
+                (attributes |> makeClickable |> addImageDimensions)
                 { src = "https://fr.marvelcdb.com" ++ path, description = card.name }
+
+
+viewQuantity : (Card -> Int -> msg) -> Card -> E.Element msg
+viewQuantity msg card =
+    List.range 0 card.quantity
+        |> List.map (\quantity -> viewQuantityButton card.selectedQuantity quantity (msg card))
+        |> E.row [ spacing 5 ]
+
+
+viewQuantityButton : Int -> Int -> (Int -> msg) -> E.Element msg
+viewQuantityButton selectedQuantity index msg =
+    let
+        label =
+            String.fromInt index
+
+        kind =
+            if selectedQuantity == index then
+                Button.Primary
+
+            else
+                Button.Secondary
+    in
+    button kind label 25 10 <| msg index

@@ -187,12 +187,12 @@ update msg model =
             )
 
         UserClickedUnselectedCard card ->
-            ( { model | cards = updateIf (\c -> c == card) (\_ -> { card | isSelected = True }) model.cards }
+            ( { model | cards = updateIf (\c -> c == card) (\_ -> { card | isImageVisible = True }) model.cards }
             , Effect.none
             )
 
         UserClickedSelectedCard card ->
-            ( { model | cards = updateIf (\c -> c == card) (\_ -> { card | isSelected = False }) model.cards }
+            ( { model | cards = updateIf (\c -> c == card) (\_ -> { card | isImageVisible = False }) model.cards }
             , Effect.none
             )
 
@@ -232,10 +232,11 @@ view model =
                 , viewPacks model.packs
                 , E.text "Cards"
                 , viewCardsTable model.cards
-                    UserClickedUnselectedCard
-                    UserClickedSelectedCard
                     { showCount = True
                     , action = Nothing
+                    , selectMsg = UserClickedUnselectedCard
+                    , unselectMsg = UserClickedSelectedCard
+                    , quantityChangedMsg = Nothing
                     }
                 ]
             )

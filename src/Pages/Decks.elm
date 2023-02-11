@@ -7,6 +7,7 @@ import Element as E
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Error exposing (viewError)
 import Faction
 import Gen.Params.Decks exposing (Params)
 import Header
@@ -97,10 +98,13 @@ view model =
             , E.inFront (Header.view <| Just "Mes decks")
             ]
           <|
-            E.el
+            E.column
                 [ E.paddingXY 20 80
+                , E.spacing 20
                 ]
-                (viewBody model)
+                [ viewError model
+                , viewBody model
+                ]
         ]
     }
 
@@ -121,8 +125,11 @@ viewBody model =
         else
             viewDecks model
 
-    else
+    else if model.error == Nothing then
         E.text "Chargement en cours..."
+
+    else
+        E.none
 
 
 viewDecks : Model -> E.Element msg
