@@ -41,37 +41,37 @@ type alias Model =
     }
 
 
+emptyModel : Model
+emptyModel =
+    { cards = []
+    , cardCodes = []
+    , marvelCdbPackIds = []
+    , packs = []
+    , logs = []
+    }
+
+
+withLogs : List String -> Model -> Model
+withLogs logs model =
+    { model | logs = logs }
+
+
 init : Shared.Model -> Request.With Params -> ( Model, Effect Msg )
 init shared req =
     case shared.status of
         Shared.Error ->
-            ( { cards = []
-              , cardCodes = []
-              , marvelCdbPackIds = []
-              , packs = []
-              , logs = shared.logs
-              }
+            ( emptyModel |> withLogs shared.logs
             , Effect.none
             )
 
         Shared.Initialized ->
-            ( { cards = []
-              , cardCodes = []
-              , marvelCdbPackIds = []
-              , packs = []
-              , logs = "initialized" :: shared.logs
-              }
+            ( emptyModel |> withLogs ("initialized" :: shared.logs)
             , Effect.fromCmd <|
                 Request.replaceRoute Route.Home_ req
             )
 
         Shared.Loading ->
-            ( { cards = []
-              , cardCodes = []
-              , marvelCdbPackIds = []
-              , packs = []
-              , logs = "loading..." :: shared.logs
-              }
+            ( emptyModel |> withLogs ("loading..." :: shared.logs)
             , Effect.fromCmd <|
                 Request.replaceRoute Route.Home_ req
             )
