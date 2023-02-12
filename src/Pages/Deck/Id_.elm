@@ -292,48 +292,66 @@ view model =
                     , E.spacing 20
                     , E.width E.fill
                     ]
-                    [ viewError model
-                    , viewDeckTitle model
-                    , viewSubtitle "Rechercher une carte"
-                    , viewCardSearch model
-                    , viewCardsTable model.cardSearchResult
-                        { showCount = True
-                        , action = Nothing
-                        , selectMsg = UserClickedUnselectedCard
-                        , unselectMsg = UserClickedSelectedCard
-                        , quantityChangedMsg = Just UserChangedCardQuantity
-                        }
-                    , if List.isEmpty model.selectedCards then
-                        E.none
+                    (viewError model
+                        :: (case model.deck of
+                                Just deck ->
+                                    viewDeck deck model
 
-                      else
-                        viewSubtitle "Cartes dans le deck"
-                    , viewCardsTable model.selectedCards
-                        { showCount = True
-                        , action = Nothing
-                        , selectMsg = UserClickedUnselectedCard -- FIXME
-                        , unselectMsg = UserClickedSelectedCard -- FIXME
-                        , quantityChangedMsg = Just UserChangedCardQuantity
-                        }
-                    ]
+                                Nothing ->
+                                    [ E.none ]
+                           )
+                    )
                 )
         ]
     }
 
 
-viewDeckTitle : Model -> E.Element Msg
-viewDeckTitle model =
-    case model.deck of
-        Just deck ->
-            E.el
-                [ Font.size 20
-                , Font.bold
-                ]
-            <|
-                E.text deck.title
+viewDeck : Deck -> Model -> List (E.Element Msg)
+viewDeck deck model =
+    [ viewDeckTitle deck
+    , viewHero deck
+    , viewSubtitle "Rechercher une carte"
+    , viewCardSearch model
+    , viewCardsTable model.cardSearchResult
+        { showCount = True
+        , action = Nothing
+        , selectMsg = UserClickedUnselectedCard
+        , unselectMsg = UserClickedSelectedCard
+        , quantityChangedMsg = Just UserChangedCardQuantity
+        }
+    , if List.isEmpty model.selectedCards then
+        E.none
 
-        Nothing ->
-            E.none
+      else
+        viewSubtitle "Cartes dans le deck"
+    , viewCardsTable model.selectedCards
+        { showCount = True
+        , action = Nothing
+        , selectMsg = UserClickedUnselectedCard -- FIXME
+        , unselectMsg = UserClickedSelectedCard -- FIXME
+        , quantityChangedMsg = Just UserChangedCardQuantity
+        }
+    ]
+
+
+viewDeckTitle : Deck -> E.Element Msg
+viewDeckTitle deck =
+    E.el
+        [ Font.size 20
+        , Font.bold
+        ]
+    <|
+        E.text deck.title
+
+
+viewHero : Deck -> E.Element Msg
+viewHero deck =
+    E.el
+        [ Font.size 16
+        , Font.bold
+        ]
+    <|
+        E.text deck.hero.name
 
 
 viewCardSearch : Model -> E.Element Msg
