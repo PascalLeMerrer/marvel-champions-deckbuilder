@@ -310,6 +310,7 @@ viewDeck : Deck -> Model -> List (E.Element Msg)
 viewDeck deck model =
     [ viewDeckTitle deck
     , viewHero deck
+    , viewAfinities deck
     , viewSubtitle "Rechercher une carte"
     , viewCardSearch model
     , viewCardsTable model.cardSearchResult
@@ -375,3 +376,10 @@ viewSubtitle subtitle =
         ]
     <|
         E.text subtitle
+
+
+viewAfinities : Deck -> E.Element msg
+viewAfinities deck =
+    deck.affinities
+        |> List.map (Faction.toString >> E.text)
+        |> E.column []
