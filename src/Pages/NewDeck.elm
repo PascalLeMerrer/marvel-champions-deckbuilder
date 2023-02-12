@@ -186,10 +186,6 @@ update msg model =
                     ( model, Cmd.none )
 
         BackendReturnedDeck (Ok deck) ->
-            let
-                _ =
-                    Debug.log "deck created, redirection in progress" deck
-            in
             ( model
             , Request.replaceRoute (Route.Deck__Id_ { id = deck.id }) model.request
             )
