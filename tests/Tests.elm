@@ -94,7 +94,7 @@ baseModel =
 
 suite : Test
 suite =
-    describe "Change quantiy of a given card in deck"
+    describe "Change quantity of a given card in deck"
         [ fuzz (Fuzz.intRange 1 3)
             "Setting the selected quantity of a card to a number greater than 0 moves it to selectedCards"
           <|
