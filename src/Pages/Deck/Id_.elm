@@ -1,14 +1,16 @@
-module Pages.Deck.Id_ exposing (Model, Msg, page)
+module Pages.Deck.Id_ exposing (Model, Msg(..), page, update, withAllCards, withAvailableCards, withSearchText, withSelectedCards)
 
-import Backend exposing (createDeckCmd, getDeckCmd, saveDeckCmd)
+import Backend exposing (getDeckCmd, saveDeckCmd)
 import Card exposing (Card, viewCardsTable)
 import Deck exposing (Deck)
+import Effect exposing (Effect)
 import Element as E
 import Element.Font as Font
 import Element.Input as Input
 import Error exposing (viewError)
 import Faction exposing (Faction, basic)
 import Gen.Params.Deck.Id_ exposing (Params)
+import Gen.Route as Route
 import Header
 import Kinto
 import List.Extra exposing (updateIf)
@@ -20,7 +22,7 @@ import View exposing (View)
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
-    Page.element
+    Page.advanced
         { init = init shared req
         , update = update
         , view = view
@@ -43,9 +45,31 @@ type alias Model =
     }
 
 
+emptyModel : Model
+emptyModel =
+    { allCards = []
+    , availableCards = []
+    , cardSearchResult = []
+    , cardSearchText = ""
+    , deck = Nothing
+    , error = Nothing
+    , selectedCards = []
+    }
+
+
+withAllCards : List Card -> Model -> Model
+withAllCards cards model =
+    { model | allCards = cards }
+
+
 withAvailableCards : List Card -> Model -> Model
 withAvailableCards cards model =
     { model | availableCards = cards }
+
+
+withSearchText : String -> Model -> Model
+withSearchText searchText model =
+    { model | cardSearchText = searchText }
 
 
 withSelectedCards : List Card -> Model -> Model
@@ -53,7 +77,7 @@ withSelectedCards cards model =
     case model.deck of
         Just deck ->
             { model
-                | selectedCards = Debug.log "New cards in deck" cards
+                | selectedCards = cards
                 , deck = Just { deck | cards = cards }
             }
 
@@ -61,18 +85,26 @@ withSelectedCards cards model =
             model
 
 
-init : Shared.Model -> Request.With Params -> ( Model, Cmd Msg )
+init : Shared.Model -> Request.With Params -> ( Model, Effect Msg )
 init shared req =
-    ( { allCards = shared.cards
-      , availableCards = filter [] shared.cards
-      , cardSearchResult = []
-      , cardSearchText = ""
-      , deck = Nothing
-      , error = Nothing
-      , selectedCards = [] -- TODO load from DB if the deck already exists
-      }
-    , getDeckCmd req.params.id BackendReturnedDeck
-    )
+    case shared.status of
+        Shared.Error ->
+            ( emptyModel
+            , Effect.none
+            )
+
+        Shared.Loaded ->
+            ( emptyModel
+                |> withAllCards shared.cards
+                |> filterAvailableCards
+            , Effect.fromCmd <| getDeckCmd req.params.id BackendReturnedDeck
+            )
+
+        _ ->
+            ( emptyModel
+            , Effect.fromCmd <|
+                Request.replaceRoute Route.Home_ req
+            )
 
 
 
@@ -87,12 +119,12 @@ type Msg
     | UserChangedCardQuantity Card Int
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
         UserChangedCardSearchText searchText ->
             ( model |> searchCard searchText
-            , Cmd.none
+            , Effect.none
             )
 
         UserClickedUnselectedCard card ->
@@ -100,7 +132,7 @@ update msg model =
                 | cardSearchResult =
                     List.map (\c -> { c | isImageVisible = c == card }) model.cardSearchResult
               }
-            , Cmd.none
+            , Effect.none
             )
 
         UserClickedSelectedCard card ->
@@ -108,39 +140,49 @@ update msg model =
                 | cardSearchResult =
                     updateIf (\c -> c == card) (\_ -> { card | isImageVisible = False }) model.cardSearchResult
               }
-            , Cmd.none
+            , Effect.none
             )
 
-        UserChangedCardQuantity card quantity ->
+        UserChangedCardQuantity card newQuantity ->
             let
                 newCard =
-                    { card | selectedQuantity = quantity }
+                    { card | selectedQuantity = newQuantity }
 
                 selectedCards =
-                    if List.member card model.selectedCards then
-                        if quantity == 0 then
-                            --remove the card from the selection
+                    case ( card.selectedQuantity, newQuantity ) of
+                        ( 0, 0 ) ->
+                            model.selectedCards
+
+                        ( _, 0 ) ->
+                            -- remove the card from the selection
                             List.filter (\c -> c.id /= card.id) model.selectedCards
 
-                        else
+                        ( 0, _ ) ->
+                            -- add the card to selection
+                            newCard :: model.selectedCards
+
+                        ( _, _ ) ->
+                            -- The card was already selected, and we changed its quantity to a value greater than 0
                             List.Extra.updateIf (\c -> c.id == card.id) (\c -> newCard) model.selectedCards
 
-                    else
-                        newCard :: model.selectedCards
-
                 availableCards =
-                    if quantity == 0 then
-                        if List.member card model.availableCards then
-                            -- we reset to 0 the quantity of an available card
-                            List.Extra.updateIf (\c -> c.id == card.id) (\c -> newCard) model.availableCards
+                    case ( card.selectedQuantity, newQuantity ) of
+                        ( 0, 0 ) ->
+                            -- The card was not selected, and we did not change its quantity so it remains unchanged
+                            model.availableCards
 
-                        else
-                            -- the card is just removed from selection, we add it back to available cards
+                        ( _, 0 ) ->
+                            -- the card was selected, now it's not; add it to available cards
                             newCard :: model.availableCards
 
-                    else
-                        -- the card is moved to selectedCards, we remove it from available cards
-                        List.filter (\c -> c.id /= card.id) model.availableCards
+                        ( 0, _ ) ->
+                            -- the card was not selected, now it is; remove it from available cards
+                            List.filter (\c -> c.id /= card.id) model.availableCards
+
+                        ( _, _ ) ->
+                            -- The card was already selected, and we changed its quantity to a value greater than 0
+                            -- so it remains unchanged
+                            model.availableCards
 
                 updatedModel =
                     model
@@ -151,39 +193,52 @@ update msg model =
             ( updatedModel
             , case updatedModel.deck of
                 Just deck ->
-                    saveDeckCmd deck BackendReturnedDeck
+                    Effect.fromCmd <| saveDeckCmd deck BackendReturnedDeck
 
                 Nothing ->
-                    Cmd.none
+                    Effect.none
             )
 
         BackendReturnedDeck (Ok deck) ->
             ( { model
                 | deck = Just deck
-                , availableCards = filter deck.affinities model.allCards
                 , selectedCards = deck.cards
               }
-            , Cmd.none
+                |> filterAvailableCards
+            , Effect.none
             )
 
         BackendReturnedDeck (Err kintoError) ->
             ( { model | error = Just (Kinto.errorToString kintoError) }
-            , Cmd.none
+            , Effect.none
             )
 
 
-filter : List Faction -> List Card -> List Card
-filter affinities cards =
+filterAvailableCards : Model -> Model
+filterAvailableCards model =
     let
-        selected_factions : List Faction
-        selected_factions =
-            basic :: affinities
+        selectedFactions : List Faction
+        selectedFactions =
+            case model.deck of
+                Just deck ->
+                    basic :: deck.affinities
+
+                Nothing ->
+                    [ basic ]
+
+        selectedCardIds : List String
+        selectedCardIds =
+            List.map .id model.selectedCards
     in
-    cards
-        |> List.filter
-            (\card ->
-                List.member card.faction selected_factions
-            )
+    { model
+        | availableCards =
+            model.allCards
+                |> List.filter
+                    (\card ->
+                        List.member card.faction selectedFactions
+                            && not (List.member card.id selectedCardIds)
+                    )
+    }
 
 
 searchCard : String -> Model -> Model
@@ -196,11 +251,12 @@ searchCard searchText model =
             String.startsWith lowercaseSearchText (String.toLower card.name)
 
         searchResult =
-            if not (String.isEmpty searchText) then
-                List.filter filterCards model.availableCards
+            Debug.log "searchResult" <|
+                if not (String.isEmpty searchText) then
+                    List.filter filterCards (Debug.log "model.availableCards" model.availableCards)
 
-            else
-                []
+                else
+                    []
     in
     { model
         | cardSearchText = searchText
