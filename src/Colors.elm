@@ -27,9 +27,14 @@ white =
     rgb255 255 255 255
 
 
+lighterGrey : Element.Color
+lighterGrey =
+    rgb255 246 244 244
+
+
 lightGrey : Element.Color
 lightGrey =
-    rgb255 246 244 244
+    rgb255 231 229 229
 
 
 grey : Element.Color

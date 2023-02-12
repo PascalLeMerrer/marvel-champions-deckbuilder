@@ -1,13 +1,12 @@
 module Card exposing (Card, cardListDecoder, decoder, encodeCard, encodeNewCard, viewCardsTable)
 
 import Button exposing (button)
-import Colors exposing (black, charcoal, darkGreen, darkerGreen, grey, lightGrey, lighterGreen, white)
+import Colors exposing (black, charcoal, darkerGreen, lightGrey, lighterGreen, lighterGrey, white)
 import Element as E exposing (px, spacing)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
-import Element.Input as Input
 import Faction exposing (Faction)
 import Json.Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
@@ -204,10 +203,10 @@ rowAttributes : Int -> Card -> List (E.Attribute msg)
 rowAttributes index card =
     [ Background.color <|
         if modBy 2 index == 0 then
-            grey
+            lightGrey
 
         else
-            lightGrey
+            lighterGrey
     , E.mouseOver
         [ if card.isImageVisible then
             Font.color white
