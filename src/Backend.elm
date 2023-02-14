@@ -1,8 +1,8 @@
-module Backend exposing (KintoData, backendName, createDeckCmd, createPack, errorToString, getCardListCmd, getDeckCmd, getDeckListCmd, getPackListCmd, saveCardListCmd, saveDeckCmd, savePackListCmd)
+module Backend exposing (KintoData, backendName, createDeckCmd, errorToString, getCardListCmd, getDeckCmd, getDeckListCmd, getPackListCmd, saveCardListCmd, saveDeckCmd, savePackListCmd)
 
 {- Exchanges with Kinto -}
 
-import Card exposing (Card, cardListDecoder, decoder, encodeNewCard)
+import Card exposing (Card, decoder, encodeNewCard)
 import Deck exposing (Deck)
 import Http
 import Json.Decode exposing (Decoder)
@@ -57,32 +57,12 @@ packCollection =
     "packs"
 
 
-recordPack : Kinto.Resource Pack
-recordPack =
-    Kinto.recordResource bucketName packCollection Pack.packDecoder
-
-
-
--- TODO use
-
-
-createPack : Pack -> (Result Kinto.Error Pack -> msg) -> Cmd msg
-createPack pack msg =
-    let
-        data =
-            Pack.encodeNewPack pack
-    in
-    client
-        |> Kinto.create recordPack data msg
-        |> Kinto.send
-
-
 getPackListCmd : (Result Http.Error (List Pack) -> msg) -> Cmd msg
 getPackListCmd msg =
     Http.request
         { method = "GET"
         , headers = [ authHeader ]
-        , url = collectionsUrl ++ "/packs/records"
+        , url = collectionsUrl ++ "/" ++ packCollection ++ "/records"
         , body = Http.emptyBody
         , expect = Http.expectJson msg packListDecoder
         , timeout = timeOutMiliseconds
