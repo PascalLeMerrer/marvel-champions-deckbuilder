@@ -1,6 +1,6 @@
 module Pages.Decks exposing (Model, Msg, page)
 
-import Backend exposing (getDeckListCmd)
+import Backend exposing (KintoData, getDeckListCmd)
 import Colors exposing (black, charcoal, darkerGreen, grey, lightGrey, white)
 import Deck exposing (Deck)
 import Element as E
@@ -13,6 +13,7 @@ import Gen.Params.Decks exposing (Params)
 import Header
 import Kinto exposing (errorToString)
 import Page
+import RemoteData exposing (RemoteData(..))
 import Request
 import Shared
 import Table
@@ -46,7 +47,7 @@ init =
       , error = Nothing
       , isLoaded = False
       }
-    , getDeckListCmd BackendReturnedDeckList
+    , getDeckListCmd (RemoteData.fromResult >> BackendReturnedDeckList)
     )
 
 
@@ -55,13 +56,13 @@ init =
 
 
 type Msg
-    = BackendReturnedDeckList (Result Kinto.Error (Kinto.Pager Deck))
+    = BackendReturnedDeckList (KintoData (Kinto.Pager Deck))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        BackendReturnedDeckList (Ok decks) ->
+        BackendReturnedDeckList (Success decks) ->
             ( { model
                 | decks = decks.objects
                 , isLoaded = True
@@ -69,8 +70,13 @@ update msg model =
             , Cmd.none
             )
 
-        BackendReturnedDeckList (Err kintoError) ->
+        BackendReturnedDeckList (Failure kintoError) ->
             ( { model | error = Just (errorToString kintoError) }
+            , Cmd.none
+            )
+
+        BackendReturnedDeckList _ ->
+            ( model
             , Cmd.none
             )
 
