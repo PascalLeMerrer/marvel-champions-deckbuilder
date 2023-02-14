@@ -1,4 +1,4 @@
-module Backend exposing (backendName, createDeckCmd, createPack, errorToString, getCardListCmd, getDeckCmd, getDeckListCmd, getPackListCmd, saveCardListCmd, saveDeckCmd, savePackListCmd)
+module Backend exposing (KintoData, backendName, createDeckCmd, createPack, errorToString, getCardListCmd, getDeckCmd, getDeckListCmd, getPackListCmd, saveCardListCmd, saveDeckCmd, savePackListCmd)
 
 {- Exchanges with Kinto -}
 
@@ -10,6 +10,7 @@ import Json.Encode as Encode
 import Kinto
 import List.Split exposing (chunksOfLeft)
 import Pack exposing (Pack, encodeNewPack, packDecoder, packListDecoder)
+import RemoteData exposing (RemoteData)
 
 
 client : Kinto.Client
@@ -42,6 +43,10 @@ authHeader =
 timeOutMiliseconds : Maybe Float
 timeOutMiliseconds =
     Just 90000
+
+
+type alias KintoData a =
+    RemoteData Kinto.Error a
 
 
 

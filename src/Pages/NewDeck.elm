@@ -1,17 +1,14 @@
 module Pages.NewDeck exposing (Model, Msg, page)
 
-import Backend exposing (createDeckCmd)
+import Backend exposing (KintoData, createDeckCmd)
 import Button exposing (button)
 import Card exposing (Card, viewCardsTable)
-import Colors exposing (darkGreen, darkerGreen, white)
 import Deck exposing (Deck)
-import Element as E exposing (rgb, rgb255)
-import Element.Background as Background
-import Element.Border as Border
+import Element as E
 import Element.Font as Font
 import Element.Input as Input
 import Error exposing (viewError)
-import Faction exposing (Faction, basic)
+import Faction exposing (Faction)
 import Gen.Params.NewPack exposing (Params)
 import Gen.Route as Route
 import Header
@@ -19,6 +16,7 @@ import Kind
 import Kinto
 import List.Extra exposing (updateIf)
 import Page
+import RemoteData exposing (RemoteData(..))
 import Request
 import Shared
 import View exposing (View)
@@ -42,7 +40,6 @@ type alias Model =
     { affinities : List Faction
     , allCards : List Card
     , error : Maybe String
-    , hero : Maybe Card
     , heroSearchResult : List Card
     , heroSearchText : String
     , request : Request.With Params
@@ -55,7 +52,6 @@ init shared req =
     ( { affinities = []
       , allCards = shared.cards
       , error = Nothing
-      , hero = Nothing
       , heroSearchResult = []
       , heroSearchText = ""
       , request = req
@@ -70,26 +66,12 @@ init shared req =
     )
 
 
-filter : List Faction -> List Card -> List Card
-filter affinities cards =
-    let
-        selected_factions : List Faction
-        selected_factions =
-            basic :: affinities
-    in
-    cards
-        |> List.filter
-            (\card ->
-                List.member card.faction selected_factions
-            )
-
-
 
 -- UPDATE
 
 
 type Msg
-    = BackendReturnedDeck (Result Kinto.Error Deck)
+    = BackendReturnedDeck (KintoData Deck)
     | UserChangedPackTitle String
     | UserToggledAffinity Faction Bool
     | UserChangedHeroSearchText String
@@ -180,20 +162,23 @@ update msg model =
                         deck =
                             deckBaseForHero model heroCard
                     in
-                    ( model, createDeckCmd deck BackendReturnedDeck )
+                    ( model, createDeckCmd deck (RemoteData.fromResult >> BackendReturnedDeck) )
 
                 _ ->
                     ( model, Cmd.none )
 
-        BackendReturnedDeck (Ok deck) ->
+        BackendReturnedDeck (Success deck) ->
             ( model
             , Request.replaceRoute (Route.Deck__Id_ { id = deck.id }) model.request
             )
 
-        BackendReturnedDeck (Err kintoError) ->
+        BackendReturnedDeck (Failure kintoError) ->
             ( { model | error = Just ("Deck creation failed: " ++ Kinto.errorToString kintoError) }
             , Cmd.none
             )
+
+        BackendReturnedDeck _ ->
+            ( model, Cmd.none )
 
 
 deckBaseForHero : Model -> Card -> Deck
@@ -222,7 +207,7 @@ deckBaseForHero model heroCard =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 

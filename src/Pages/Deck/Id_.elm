@@ -1,6 +1,6 @@
 module Pages.Deck.Id_ exposing (Model, Msg(..), page, update, withAllCards, withAvailableCards, withSearchText, withSelectedCards)
 
-import Backend exposing (getDeckCmd, saveDeckCmd)
+import Backend exposing (KintoData, getDeckCmd, saveDeckCmd)
 import Card exposing (Card, viewCardsTable)
 import Deck exposing (Deck)
 import Effect exposing (Effect)
@@ -15,6 +15,7 @@ import Header
 import Kinto
 import List.Extra exposing (updateIf)
 import Page
+import RemoteData exposing (RemoteData(..))
 import Request
 import Shared
 import View exposing (View)
@@ -39,7 +40,7 @@ type alias Model =
     , availableCards : List Card
     , cardSearchResult : List Card
     , cardSearchText : String
-    , deck : Maybe Deck
+    , deck : KintoData Deck
     , error : Maybe String
     , selectedCards : List Card
     }
@@ -51,7 +52,7 @@ emptyModel =
     , availableCards = []
     , cardSearchResult = []
     , cardSearchText = ""
-    , deck = Nothing
+    , deck = NotAsked
     , error = Nothing
     , selectedCards = []
     }
@@ -75,13 +76,13 @@ withSearchText searchText model =
 withSelectedCards : List Card -> Model -> Model
 withSelectedCards cards model =
     case model.deck of
-        Just deck ->
+        Success deck ->
             { model
                 | selectedCards = cards
-                , deck = Just { deck | cards = cards }
+                , deck = Success { deck | cards = cards }
             }
 
-        Nothing ->
+        _ ->
             model
 
 
@@ -97,7 +98,7 @@ init shared req =
             ( emptyModel
                 |> withAllCards shared.cards
                 |> filterAvailableCards
-            , Effect.fromCmd <| getDeckCmd req.params.id BackendReturnedDeck
+            , Effect.fromCmd <| getDeckCmd req.params.id (RemoteData.fromResult >> BackendReturnedDeck)
             )
 
         _ ->
@@ -112,7 +113,7 @@ init shared req =
 
 
 type Msg
-    = BackendReturnedDeck (Result Kinto.Error Deck)
+    = BackendReturnedDeck (KintoData Deck)
     | UserChangedCardSearchText String
     | UserClickedUnselectedCard Card
     | UserClickedSelectedCard Card
@@ -163,7 +164,7 @@ update msg model =
 
                         ( _, _ ) ->
                             -- The card was already selected, and we changed its quantity to a value greater than 0
-                            List.Extra.updateIf (\c -> c.id == card.id) (\c -> newCard) model.selectedCards
+                            List.Extra.updateIf (\c -> c.id == card.id) (\_ -> newCard) model.selectedCards
 
                 availableCards =
                     case ( card.selectedQuantity, newQuantity ) of
@@ -192,24 +193,29 @@ update msg model =
             in
             ( updatedModel
             , case updatedModel.deck of
-                Just deck ->
-                    Effect.fromCmd <| saveDeckCmd deck BackendReturnedDeck
+                Success deck ->
+                    Effect.fromCmd <| saveDeckCmd deck (RemoteData.fromResult >> BackendReturnedDeck)
 
-                Nothing ->
+                _ ->
                     Effect.none
             )
 
-        BackendReturnedDeck (Ok deck) ->
+        BackendReturnedDeck (Success deck) ->
             ( { model
-                | deck = Just deck
+                | deck = Success deck
                 , selectedCards = deck.cards
               }
                 |> filterAvailableCards
             , Effect.none
             )
 
-        BackendReturnedDeck (Err kintoError) ->
+        BackendReturnedDeck (Failure kintoError) ->
             ( { model | error = Just (Kinto.errorToString kintoError) }
+            , Effect.none
+            )
+
+        BackendReturnedDeck _ ->
+            ( { model | error = Nothing }
             , Effect.none
             )
 
@@ -220,10 +226,10 @@ filterAvailableCards model =
         selectedFactions : List Faction
         selectedFactions =
             case model.deck of
-                Just deck ->
+                Success deck ->
                     basic :: deck.affinities
 
-                Nothing ->
+                _ ->
                     [ basic ]
 
         selectedCardIds : List String
@@ -269,7 +275,7 @@ searchCard searchText model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
@@ -292,14 +298,18 @@ view model =
                     , E.spacing 20
                     , E.width E.fill
                     ]
-                    (viewError model
-                        :: (case model.deck of
-                                Just deck ->
-                                    viewDeck deck model
+                    (case model.deck of
+                        Success deck ->
+                            viewDeck deck model
 
-                                Nothing ->
-                                    [ E.none ]
-                           )
+                        Loading ->
+                            [ E.text "Chargement en cours..." ]
+
+                        Failure _ ->
+                            [ viewError model ]
+
+                        NotAsked ->
+                            [ E.none ]
                     )
                 )
         ]
@@ -310,7 +320,7 @@ viewDeck : Deck -> Model -> List (E.Element Msg)
 viewDeck deck model =
     [ viewDeckTitle deck
     , viewHero deck
-    , viewAfinities deck
+    , viewAffinities deck
     , viewSubtitle "Rechercher une carte"
     , viewCardSearch model
     , viewCardsTable model.cardSearchResult
@@ -378,8 +388,8 @@ viewSubtitle subtitle =
         E.text subtitle
 
 
-viewAfinities : Deck -> E.Element msg
-viewAfinities deck =
+viewAffinities : Deck -> E.Element msg
+viewAffinities deck =
     deck.affinities
         |> List.map (Faction.toString >> E.text)
         |> E.column []

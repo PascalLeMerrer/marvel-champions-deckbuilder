@@ -18,6 +18,7 @@
             "elm/url": "1.0.0",
             "elm-community/list-extra": "8.7.0",
             "elm-community/list-split": "1.0.3",
+            "krisajenkins/remotedata": "6.0.1",
             "mcordova47/elm-natural-ordering": "1.0.5",
             "mdgriffith/elm-ui": "1.1.8",
             "ryannhg/elm-spa": "6.0.0"
